@@ -6,17 +6,22 @@ namespace Modules\Shared\Infrastructure\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Translation\FileLoader;
 use Modules\Shared\Infrastructure\Events\EventBus;
 use Modules\Shared\Infrastructure\Localization\LangPathRegistry;
+use Modules\Shared\Infrastructure\Observability\ServerTimingRecorder;
 use Modules\Shared\Infrastructure\Tenancy\TenantManager;
 use Modules\Shared\Presentation\Exceptions\ApiExceptionRenderer;
+use Modules\Shared\Presentation\Http\Middleware\AddServerTiming;
+use Modules\Shared\Presentation\Http\Middleware\AssignRequestId;
 use Modules\Shared\Presentation\Http\Middleware\ForceJsonResponse;
 use Modules\Shared\Presentation\Http\Middleware\IdempotencyMiddleware;
 use Modules\Shared\Presentation\Http\Middleware\ResolveTenant;
@@ -32,6 +37,7 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app->singleton(TenantManager::class);
         $this->app->singleton(EventBus::class);
+        $this->app->singleton(ServerTimingRecorder::class);
         $this->app->register(QueueTenantProvider::class);
 
         $this->registerModuleTranslations();
@@ -42,6 +48,8 @@ class CoreServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->registerMiddleware();
         $this->registerExceptionHandling();
+
+        DB::listen(fn (QueryExecuted $query) => $this->app->make(ServerTimingRecorder::class)->recordQuery($query->time));
 
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/../../Presentation/routes/api.php');
@@ -106,13 +114,16 @@ class CoreServiceProvider extends ServiceProvider
         // ForceJsonResponse, SetLocale, then whatever was already there.
         Route::prependMiddlewareToGroup('api', SetLocale::class);
         Route::prependMiddlewareToGroup('api', ForceJsonResponse::class);
+        // Outermost, so error responses carry them too (FR-BE-71).
+        Route::prependMiddlewareToGroup('api', AddServerTiming::class);
+        Route::prependMiddlewareToGroup('api', AssignRequestId::class);
 
         /** @var Router $router */
         $router = $this->app->make('router');
         $priority = $router->middlewarePriority;
 
         if (! in_array(ForceJsonResponse::class, $priority, true)) {
-            array_splice($priority, 0, 0, [ForceJsonResponse::class, SetLocale::class]);
+            array_splice($priority, 0, 0, [AssignRequestId::class, AddServerTiming::class, ForceJsonResponse::class, SetLocale::class]);
         }
 
         if (! in_array(ResolveTenant::class, $priority, true)) {

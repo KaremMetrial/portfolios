@@ -27,9 +27,10 @@ class RoleApiTest extends TestCase
         $this->actingAs($user);
 
         $response = $this->postJson('/api/v1/rbac/roles', [
-            'name' => 'editor',
+            // 'editor' is a seeded system role in the portfolio (FR-BE-20).
+            'name' => 'reviewer',
             'display_name' => [
-                'en' => 'Editor',
+                'en' => 'Reviewer',
                 'ar' => 'محرر',
             ],
             'description' => [
@@ -38,7 +39,7 @@ class RoleApiTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('data.name', 'editor');
+        $response->assertJsonPath('data.name', 'reviewer');
         $response->assertJsonPath('data.display_name.ar', 'محرر');
     }
 

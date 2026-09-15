@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { resolveLocaleRoute } from "@/lib/i18n/routing";
+import { isProductionOrigin } from "@/lib/site";
+
 /**
- * Proxy (Next.js 16 middleware) — FE-0.
+ * Proxy (Next.js 16 middleware), FE-0.
  *
- * FR-FE-02: English at the root, Arabic under /ar, no automatic language
- * redirect. Unprefixed paths are rewritten internally to /en/*; /en/* URLs
- * 308-redirect to the unprefixed form so English has one canonical URL.
+ * FR-FE-02: locale routing, see lib/i18n/routing.ts.
  * FR-FE-96: non-production deployments send X-Robots-Tag: noindex.
  * NFR-FE-S2: baseline security headers + CSP stub (full nonce CSP in FE-6).
  */
-
-const PUBLIC_FILE = /\.(.*)$/;
 
 function securityHeaders(isProduction: boolean): Record<string, string> {
   const headers: Record<string, string> = {
@@ -19,7 +18,7 @@ function securityHeaders(isProduction: boolean): Record<string, string> {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    // CSP stub — full nonce-based CSP ships in FE-6.
+    // CSP stub: the nonce-based policy ships in FE-6.
     "Content-Security-Policy": [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
@@ -33,68 +32,42 @@ function securityHeaders(isProduction: boolean): Record<string, string> {
     ].join("; "),
   };
 
-  if (!isProduction) {
+  if (isProduction) {
+    headers["Strict-Transport-Security"] =
+      "max-age=63072000; includeSubDomains; preload";
+  } else {
     headers["X-Robots-Tag"] = "noindex, nofollow";
   }
 
   return headers;
 }
 
-function withSecurityHeaders(
-  response: NextResponse,
-  isProduction: boolean,
-): NextResponse {
+export function proxy(request: NextRequest) {
+  const isProduction = isProductionOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+  const decision = resolveLocaleRoute(request.nextUrl.pathname);
+
+  let response: NextResponse;
+  if (decision.type === "next") {
+    response = NextResponse.next();
+  } else {
+    const url = request.nextUrl.clone();
+    url.pathname = decision.pathname;
+    response =
+      decision.type === "redirect"
+        ? NextResponse.redirect(url, decision.status)
+        : NextResponse.rewrite(url);
+  }
+
   for (const [key, value] of Object.entries(securityHeaders(isProduction))) {
     response.headers.set(key, value);
   }
   return response;
 }
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isProduction =
-    process.env.NEXT_PUBLIC_SITE_URL === "https://kareemsabry.dev";
-
-  // ---- Routing (FR-FE-02) -------------------------------------------------
-
-  // Metadata files, API routes and static files bypass language handling.
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname === "/cv" ||
-    PUBLIC_FILE.test(pathname)
-  ) {
-    return withSecurityHeaders(NextResponse.next(), isProduction);
-  }
-
-  const hasArPrefix = pathname === "/ar" || pathname.startsWith("/ar/");
-  const hasEnPrefix = pathname === "/en" || pathname.startsWith("/en/");
-
-  // (b) /en/* is a duplicate of the root URLs — 308 to the unprefixed form.
-  if (hasEnPrefix) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname === "/en" ? "/" : pathname.slice(3);
-    return withSecurityHeaders(
-      NextResponse.redirect(url, 308),
-      isProduction,
-    );
-  }
-
-  // (a) Rewrite unprefixed paths to /en internally.
-  if (!hasArPrefix) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname === "/" ? "/en" : `/en${pathname}`;
-    return withSecurityHeaders(NextResponse.rewrite(url), isProduction);
-  }
-
-  // /ar/* renders as-is with the same security headers.
-  return withSecurityHeaders(NextResponse.next(), isProduction);
-}
-
 export const config = {
   matcher: [
-    // Run on everything except Next internals; api/cv and file-extension
-    // requests are further short-circuited inside the handler.
-    "/((?!_next/static|_next/image|api|cv).*)",
+    // Everything except build assets and the image optimizer; api, cv and
+    // file requests still get security headers but skip locale routing.
+    "/((?!_next/static|_next/image).*)",
   ],
 };

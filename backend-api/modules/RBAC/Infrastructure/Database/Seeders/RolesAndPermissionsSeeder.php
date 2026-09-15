@@ -55,6 +55,20 @@ class RolesAndPermissionsSeeder extends Seeder
             'communication.messages.create',
             // Webhooks
             'webhooks.view', 'webhooks.manage',
+            // Portfolio content (plan BE-1)
+            'portfolio.profile.manage',
+            'portfolio.experiences.manage',
+            'portfolio.projects.view', 'portfolio.projects.manage', 'portfolio.projects.publish',
+            'portfolio.skills.manage',
+            'portfolio.credentials.manage',
+            'portfolio.testimonials.manage',
+            'portfolio.cv.manage',
+            'portfolio.seo.manage',
+            'portfolio.site.manage',
+            // Contact inbox, analytics, articles
+            'contact.messages.view', 'contact.messages.manage',
+            'analytics.view',
+            'insights.articles.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -86,6 +100,17 @@ class RolesAndPermissionsSeeder extends Seeder
             'user' => [
                 'currencies.view', 'territories.view', 'zones.view', 'media.view', 'media.upload', 'payments.create',
                 'communication.conversations.view', 'communication.conversations.create', 'communication.messages.create',
+            ],
+            // Portfolio content editor: everything except site settings, roles, and users.
+            'editor' => [
+                'portfolio.experiences.manage',
+                'portfolio.projects.view', 'portfolio.projects.manage', 'portfolio.projects.publish',
+                'portfolio.skills.manage', 'portfolio.credentials.manage', 'portfolio.testimonials.manage',
+                'portfolio.seo.manage',
+                'contact.messages.view', 'contact.messages.manage',
+                'analytics.view',
+                'insights.articles.manage',
+                'media.view', 'media.upload',
             ],
             'customer' => [
                 'currencies.view', 'territories.view', 'zones.view', 'media.view', 'media.upload', 'payments.create',

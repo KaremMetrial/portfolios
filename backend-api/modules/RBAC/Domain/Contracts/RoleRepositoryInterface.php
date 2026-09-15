@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\RBAC\Domain\Contracts;
 
+use Illuminate\Database\Eloquent\Collection;
 use Modules\RBAC\Domain\Models\Role;
 
 interface RoleRepositoryInterface
 {
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Role>
+     * @return Collection<int, Role>
      */
-    public function all(): \Illuminate\Database\Eloquent\Collection;
+    public function all(): Collection;
 
     public function findById(string $id): Role;
 

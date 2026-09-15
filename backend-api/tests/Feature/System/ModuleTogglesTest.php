@@ -15,13 +15,15 @@ use Tests\TestCase;
  */
 class ModuleTogglesTest extends TestCase
 {
-    /** @var array<int, string> */
+    /** @var array<string, array{server: mixed, env: mixed}> */
     private array $envVarsToReset = [];
 
     protected function tearDown(): void
     {
-        foreach ($this->envVarsToReset as $var) {
+        foreach ($this->envVarsToReset as $var => $previous) {
             putenv($var);
+            $this->restoreSuperglobal($_SERVER, $var, $previous['server']);
+            $this->restoreSuperglobal($_ENV, $var, $previous['env']);
         }
         $this->envVarsToReset = [];
 
@@ -38,8 +40,14 @@ class ModuleTogglesTest extends TestCase
     {
         foreach ($keys as $key) {
             $var = 'MODULE_'.strtoupper($key).'_ENABLED';
+            $this->envVarsToReset[$var] ??= [
+                'server' => $_SERVER[$var] ?? null,
+                'env' => $_ENV[$var] ?? null,
+            ];
+            // phpunit.xml pins these flags as <server> vars, which env()
+            // reads before getenv(), so override every source.
             putenv("{$var}=false");
-            $this->envVarsToReset[] = $var;
+            $_SERVER[$var] = $_ENV[$var] = 'false';
         }
         $this->refreshApplication();
 
@@ -47,6 +55,16 @@ class ModuleTogglesTest extends TestCase
         // means a fresh, unmigrated database, so re-run what RefreshDatabase
         // already did once for the original instance before this refresh.
         $this->artisan('migrate', ['--seed' => true]);
+    }
+
+    /** @param array<string, mixed> $superglobal */
+    private function restoreSuperglobal(array &$superglobal, string $var, mixed $previous): void
+    {
+        if ($previous === null) {
+            unset($superglobal[$var]);
+        } else {
+            $superglobal[$var] = $previous;
+        }
     }
 
     public function test_disabling_a_module_removes_its_routes(): void

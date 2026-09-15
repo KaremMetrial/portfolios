@@ -40,14 +40,16 @@ Effort is in **focused developer days** (about 6 productive hours). Convert to c
 
 ### BE-0 · Foundation and cleanup (2 d)
 
-- [ ] Rename app identity: `APP_NAME="Metrial Portfolio API"`, OpenAPI title and description, `COMPOSE_PROJECT_NAME`.
-- [ ] Disable unused modules in `.env.example` and `.env.docker`: payment, wallet, communication, integration_oauth (SRS-BE §2.2); confirm `php artisan route:list` no longer shows their routes.
-- [ ] Remove the demo enterprise data from the local seeding path, or gate it behind `SEED_ENTERPRISE_DEMO=false`, so portfolio seeders are the default.
-- [ ] Disable public registration routes (FR-BE-25); add the `portfolio:create-owner` artisan command (name, email, password prompt, assigns `super-admin`, forces MFA enrollment on first login).
-- [ ] Add env vars from SRS-BE §7 to `.env.example` with comments.
-- [ ] Configure CORS origins (FR-BE-14).
-- [ ] Recreate a CI workflow (GitHub Actions or your chosen CI) that runs `make ci-test` plus the OpenAPI export (the previous `.github/workflows` were removed).
-- [ ] Add module flags for new modules: `portfolio`, `contact`, `analytics`, `showcase`, `insights`.
+- [x] Rename app identity: `APP_NAME="Metrial Portfolio API"`, OpenAPI title and description, `COMPOSE_PROJECT_NAME`.
+- [x] Disable unused modules in `.env.example` (`.env.docker` is infrastructure-only, so N/A): payment, wallet, communication, integration_oauth (SRS-BE §2.2); confirm `php artisan route:list` no longer shows their routes.
+- [x] Remove the demo enterprise data from the local seeding path, or gate it behind `SEED_ENTERPRISE_DEMO=false`, so portfolio seeders are the default.
+- [x] Disable public registration routes (FR-BE-25); add the `portfolio:create-owner` artisan command (name, email, password prompt, assigns `super-admin`, forces MFA enrollment on first login).
+- [x] Add env vars from SRS-BE §7 to `.env.example` with comments.
+- [x] Configure CORS origins (FR-BE-14).
+- [x] Recreate a CI workflow (GitHub Actions or your chosen CI) that runs `make ci-test` plus the OpenAPI export (the previous `.github/workflows` were removed). Lives at the repo root: `.github/workflows/backend.yml`.
+- [x] Add module flags for new modules: `portfolio`, `contact`, `analytics`, `showcase`, `insights`.
+
+**Status (2026-09-15):** done. 244 tests, Pint and PHPStan green; `phpunit.xml` keeps disabled modules and registration on so the base suites still run.
 
 **Done when:** a fresh clone runs `make up && make fresh` with portfolio defaults, disabled module routes return 404, CI is green.
 

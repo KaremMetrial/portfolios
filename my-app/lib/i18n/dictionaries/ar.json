@@ -9,7 +9,9 @@
     "projects": "المشاريع",
     "experience": "الخبرات",
     "about": "عني",
-    "contact": "تواصل"
+    "contact": "تواصل",
+    "label": "التنقل الرئيسي",
+    "downloadCv": "تحميل السيرة الذاتية"
   },
   "header": {
     "skipToContent": "تجاوز إلى المحتوى",
@@ -23,12 +25,24 @@
   },
   "language": {
     "label": "اللغة",
-    "switch": "English",
-    "banner": "عرض الموقع بالإنجليزية؟",
-    "bannerAction": "View the site in English",
-    "bannerDismiss": "إخفاء"
+    "switch": "العربية",
+    "suggest": {
+      "question": "عرض الموقع بالعربية؟",
+      "action": "عرض بالعربية",
+      "dismiss": "إخفاء"
+    }
   },
   "status": {
     "checking": "جارٍ التحقق…"
+  },
+  "home": {
+    "role": "مهندس برمجيات باك اند",
+    "intro": "PHP وLaravel وبنية تحتية تصمد أمام الترافيك الحقيقي: مدفوعات ودفاتر وطوابير وأنظمة فورية."
+  },
+  "notFound": {
+    "title": "الصفحة غير موجودة",
+    "body": "الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
+    "home": "العودة إلى الرئيسية",
+    "projects": "تصفح المشاريع"
   }
 }

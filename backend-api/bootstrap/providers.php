@@ -11,6 +11,7 @@ use Modules\Governance\Infrastructure\Providers\GovernanceServiceProvider;
 use Modules\Integration\Infrastructure\Providers\IntegrationServiceProvider;
 use Modules\Media\Infrastructure\Providers\MediaServiceProvider;
 use Modules\Payment\Infrastructure\Providers\PaymentServiceProvider;
+use Modules\Portfolio\Infrastructure\Providers\PortfolioServiceProvider;
 use Modules\RBAC\Infrastructure\Providers\RbacAuthServiceProvider;
 use Modules\RBAC\Infrastructure\Providers\RbacServiceProvider;
 use Modules\Shared\Infrastructure\Providers\SharedServiceProvider;
@@ -36,4 +37,5 @@ return [
     TerritoryServiceProvider::class,
     RbacServiceProvider::class,
     RbacAuthServiceProvider::class,
+    PortfolioServiceProvider::class,
 ];

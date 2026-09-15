@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Metrial Portfolio: web app
 
-## Getting Started
+Next.js 16 frontend for Kareem Sabry's portfolio. Requirements live in
+[`docs/SRS-frontend.md`](../docs/SRS-frontend.md) and the build order in
+[`docs/plan-frontend.md`](../docs/plan-frontend.md).
 
-First, run the development server:
+> This Next.js version differs from older releases (`proxy.ts`, Cache Components).
+> Read the matching guide in `node_modules/next/dist/docs/` before changing a feature.
+
+## Develop
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+npm install
+npm run dev          # http://localhost:3000 (English) and /ar (Arabic)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Checks
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command                             | What it runs                                                |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `npm run lint`                      | ESLint                                                      |
+| `npm run format:check`              | Prettier                                                    |
+| `npm run typecheck`                 | Route type generation + `tsc --noEmit`                      |
+| `npm test`                          | Vitest unit tests (`tests/unit`)                            |
+| `npm run build && npm run test:e2e` | Playwright + axe against the production build (`tests/e2e`) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+First e2e run: `npx playwright install chromium`.
 
-## Learn More
+## Routing
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+English is served at the root and Arabic under `/ar`; internally both render from `app/[lang]`.
+`proxy.ts` rewrites unprefixed paths to `/en`, 308-redirects `/en/*` to the unprefixed URL, and never
+redirects based on browser language (an Arabic-preferring visitor sees a banner instead).
+The decision logic is in `lib/i18n/routing.ts`.

@@ -1,0 +1,30 @@
+/*
+ * METRIAL design tokens (SRS-FE §4.1, brand sheet).
+ *
+ * Contrast pairs are verified and recorded here in FE-1. Until then:
+ * offwhite on charcoal ≈ 17:1; silver and gold are not yet cleared for
+ * body-size text.
+ */
+@theme {
+  --color-gold: #c6a86a;
+  --color-gold-light: #e2c88f;
+  --color-gold-dark: #9e8150;
+  --color-charcoal: #111318;
+  --color-surface: #181b22;
+  --color-line: #2a2e37;
+  --color-silver: #8b919b;
+  --color-offwhite: #f4f5f7;
+
+  --radius-card: 1rem;
+
+  /* next/font exposes these variables on <html> (app/[lang]/layout.tsx). */
+  --font-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-arabic: var(--font-plex-arabic), var(--font-inter), sans-serif;
+}
+
+:root {
+  /* M-mark diagonal (0.625), used by SlopeDivider in FE-1. */
+  --slope: 0.625;
+}

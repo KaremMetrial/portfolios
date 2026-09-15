@@ -1,8 +1,8 @@
 /**
  * First-party analytics queue (FR-FE-80–82).
  *
- * FE-0 stub: events are queued and logged in dev. The beacon transport to the
- * backend `/api/events` proxy lands with the analytics work in FE-6.
+ * FE-0 stub: events are queued and logged in dev. The beacon transport to
+ * `POST {API}/analytics/events` lands with the analytics work in FE-6.
  */
 
 export type AnalyticsEvent =
@@ -12,30 +12,35 @@ export type AnalyticsEvent =
   | "contact_submit"
   | "language_switch";
 
-type Queue = Array<{ event: AnalyticsEvent; props: Record<string, unknown> }>;
+type QueuedEvent = {
+  event: AnalyticsEvent;
+  props: Record<string, unknown>;
+  anonymous: boolean;
+};
 
-const queue: Queue = [];
+const queue: QueuedEvent[] = [];
 
-function respectsPrivacy(): boolean {
+function prefersPrivacy(): boolean {
   if (typeof window === "undefined") return false;
-  const dnt =
-    navigator.doNotTrack === "1" ||
-    (window as { doNotTrack?: string }).doNotTrack === "1";
   const gpc = (navigator as { globalPrivacyControl?: boolean })
     .globalPrivacyControl;
-  return Boolean(dnt || gpc);
+  return navigator.doNotTrack === "1" || gpc === true;
 }
 
+/** FR-FE-81: with DNT or GPC, only an anonymous page_view is sent. */
 export function track(
   event: AnalyticsEvent,
   props: Record<string, unknown> = {},
 ): void {
-  if (respectsPrivacy()) return;
+  const anonymous = prefersPrivacy();
+  if (anonymous && event !== "page_view") return;
 
-  queue.push({ event, props });
+  const queued: QueuedEvent = anonymous
+    ? { event, props: {}, anonymous }
+    : { event, props, anonymous };
+  queue.push(queued);
 
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console -- intentional dev-only output
-    console.debug("[analytics]", event, props);
+    console.debug("[analytics]", queued);
   }
 }

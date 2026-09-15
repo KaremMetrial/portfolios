@@ -1,12 +1,14 @@
-name: CI
+name: Backend
 
 on:
   push:
     branches: [main]
+    paths: ["backend-api/**", ".github/workflows/backend.yml"]
   pull_request:
+    paths: ["backend-api/**", ".github/workflows/backend.yml"]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: backend-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:

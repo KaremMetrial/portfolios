@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\RBAC\Infrastructure\Repositories;
 
 use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Database\Eloquent\Collection;
 use Modules\RBAC\Domain\Contracts\PermissionRepositoryInterface;
 use Modules\Shared\Infrastructure\Persistence\BaseRepository;
 use Spatie\Permission\Models\Permission;
@@ -21,11 +22,11 @@ class PermissionRepository extends BaseRepository implements PermissionRepositor
 
     /**
      * @param  array<int, Expression|string>  $columns
-     * @return \Illuminate\Database\Eloquent\Collection<int, Permission>
+     * @return Collection<int, Permission>
      */
-    public function all(array $columns = ['*'], ?string $tenantId = null): \Illuminate\Database\Eloquent\Collection
+    public function all(array $columns = ['*'], ?string $tenantId = null): Collection
     {
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Permission> $result */
+        /** @var Collection<int, Permission> $result */
         $result = $this->query($tenantId)->get($columns);
 
         return $result;
@@ -40,11 +41,11 @@ class PermissionRepository extends BaseRepository implements PermissionRepositor
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Permission>
+     * @return Collection<int, Permission>
      */
-    public function findByNames(array $names): \Illuminate\Database\Eloquent\Collection
+    public function findByNames(array $names): Collection
     {
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Permission> $result */
+        /** @var Collection<int, Permission> $result */
         $result = $this->query()->whereIn('name', $names)->get();
 
         return $result;

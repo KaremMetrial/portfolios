@@ -28,3 +28,10 @@ export function unprefixedPath(pathname: string): string {
   }
   return pathname;
 }
+
+/** Public URL of a path in a locale: English unprefixed, Arabic under /ar. */
+export function localizedPath(pathname: string, locale: Locale): string {
+  const path = unprefixedPath(pathname);
+  if (locale === defaultLocale) return path;
+  return path === "/" ? `/${locale}` : `/${locale}${path}`;
+}

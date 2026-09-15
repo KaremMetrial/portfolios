@@ -9,7 +9,9 @@
     "projects": "Projects",
     "experience": "Experience",
     "about": "About",
-    "contact": "Contact"
+    "contact": "Contact",
+    "label": "Main",
+    "downloadCv": "Download CV"
   },
   "header": {
     "skipToContent": "Skip to content",
@@ -23,12 +25,24 @@
   },
   "language": {
     "label": "Language",
-    "switch": "العربية",
-    "banner": "View the site in Arabic?",
-    "bannerAction": "عرض الموقع بالعربية",
-    "bannerDismiss": "Dismiss"
+    "switch": "English",
+    "suggest": {
+      "question": "This page is also available in English.",
+      "action": "View in English",
+      "dismiss": "Dismiss"
+    }
   },
   "status": {
     "checking": "Checking…"
+  },
+  "home": {
+    "role": "Backend Software Engineer",
+    "intro": "PHP, Laravel, and infrastructure that holds up under real traffic: payments, ledgers, queues, and real-time systems."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you are looking for does not exist or has moved.",
+    "home": "Back to home",
+    "projects": "Browse projects"
   }
 }

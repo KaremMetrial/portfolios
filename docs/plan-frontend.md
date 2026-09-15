@@ -42,16 +42,18 @@ Effort is in **focused developer days** (about 6 productive hours).
 
 ### FE-0 · Foundation (3 d)
 
-- [ ] Read docs: `02-guides/internationalization.md`, `03-file-conventions/proxy.md`, `01-directives/use-cache.md`, `02-guides/content-security-policy.md`.
-- [ ] Install and pin: `motion`, `zod`, `cmdk`, `server-only`, `clsx`, `tailwind-merge`, icon set, `@formatjs/intl-localematcher`, `negotiator`; dev: `vitest`, `@testing-library/react`, `@playwright/test`, `@axe-core/playwright`, `prettier`, `@lhci/cli`.
-- [ ] `next.config.ts`: `cacheComponents: true`, image remote patterns for the API media origin.
-- [ ] Move the app under `app/[lang]` (layout, page, not-found); keep `favicon.ico`, `icon.svg`, and `apple-icon.png` at `app/` root (FR-FE-01).
-- [ ] `proxy.ts`: rewrite unprefixed paths to `en`, 308 `/en/*` → unprefixed, **no language auto-redirect** (FR-FE-02); `X-Robots-Tag: noindex` outside production (FR-FE-96); security headers (NFR-FE-S2); a CSP stub.
-- [ ] `lib/i18n`: config, server-only `getDictionary`, `en.json` / `ar.json` skeletons (FR-FE-04).
-- [ ] Root layout: `lang` + `dir`, fonts via `next/font` (Montserrat, Inter, JetBrains Mono, IBM Plex Sans Arabic), skip link, header and footer shells, language switch (FR-FE-03, FR-FE-05).
-- [ ] `lib/env.ts` with Zod-validated env vars (SRS-FE §6).
-- [ ] CI: lint, `tsc --noEmit`, Vitest, Playwright smoke, build.
-- [ ] Remove the create-next-app leftovers (`public/*.svg`, default page content).
+- [x] Read docs: `02-guides/internationalization.md`, `03-file-conventions/proxy.md`, `01-directives/use-cache.md`, `02-guides/content-security-policy.md`.
+- [x] Install and pin: `motion`, `zod`, `cmdk`, `server-only`, `clsx`, `tailwind-merge`, icon set, `@formatjs/intl-localematcher`, `negotiator`; dev: `vitest`, `@testing-library/react`, `@playwright/test`, `@axe-core/playwright`, `prettier`, `@lhci/cli`.
+- [x] `next.config.ts`: `cacheComponents: true`, image remote patterns for the API media origin.
+- [x] Move the app under `app/[lang]` (layout, page, not-found); keep `favicon.ico`, `icon.svg`, and `apple-icon.png` at `app/` root (FR-FE-01).
+- [x] `proxy.ts`: rewrite unprefixed paths to `en`, 308 `/en/*` → unprefixed, **no language auto-redirect** (FR-FE-02); `X-Robots-Tag: noindex` outside production (FR-FE-96); security headers (NFR-FE-S2); a CSP stub.
+- [x] `lib/i18n`: config, server-only `getDictionary`, `en.json` / `ar.json` skeletons (FR-FE-04).
+- [x] Root layout: `lang` + `dir`, fonts via `next/font` (Montserrat, Inter, JetBrains Mono, IBM Plex Sans Arabic), skip link, header and footer shells, language switch (FR-FE-03, FR-FE-05).
+- [x] `lib/env.ts` with Zod-validated env vars (SRS-FE §6).
+- [x] CI: lint, `tsc --noEmit`, Vitest, Playwright smoke, build.
+- [x] Remove the create-next-app leftovers (`public/*.svg`, default page content).
+
+**Status (2026-09-15):** done. Deviations: the Arabic banner is decided client-side from `navigator.languages` (keeps pages static); unmatched URLs use `app/global-not-found.tsx` (bilingual) because the root layout is under `[lang]`; CI is `.github/workflows/frontend.yml` at the repo root. Not yet installed from §2.1: jsdom for component tests (add in FE-1).
 
 **Done when:** `/` serves English with status 200 (no redirect); `/en` 308-redirects to `/`; `/ar` renders RTL; an Arabic-preferring browser sees the language banner; CI is green.
 
