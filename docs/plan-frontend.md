@@ -53,19 +53,21 @@ Effort is in **focused developer days** (about 6 productive hours).
 - [x] CI: lint, `tsc --noEmit`, Vitest, Playwright smoke, build.
 - [x] Remove the create-next-app leftovers (`public/*.svg`, default page content).
 
-**Status (2026-09-15):** done. Deviations: the Arabic banner is decided client-side from `navigator.languages` (keeps pages static); unmatched URLs use `app/global-not-found.tsx` (bilingual) because the root layout is under `[lang]`; CI is `.github/workflows/frontend.yml` at the repo root. Not yet installed from §2.1: jsdom for component tests (add in FE-1).
+**Status (2026-09-15):** done. Deviations: the Arabic banner is decided client-side from `navigator.languages` (keeps pages static); unmatched URLs use `app/global-not-found.tsx` (bilingual) because the root layout is under `[lang]`; CI is `.github/workflows/frontend.yml` at the repo root. jsdom + RTL component-test tooling added later, in FE-1.
 
 **Done when:** `/` serves English with status 200 (no redirect); `/en` 308-redirects to `/`; `/ar` renders RTL; an Arabic-preferring browser sees the language banner; CI is green.
 
 ### FE-1 · Design system + motion (4 d)
 
-- [ ] `styles/tokens.css` with `@theme` tokens from SRS-FE §4.1; verify contrast pairs and record the results in the file header.
-- [ ] Global styles: charcoal canvas, selection color, focus ring, reduced-motion media query resets.
-- [ ] Brand assets: inline SVG components `<MetrialMark>` and `<MetrialWordmark>` from `images/metrial-mark*.svg`.
-- [ ] UI components (SRS-FE §4.2): Button, Badge (availability pulse), Chip, Card, SectionHeader, Stat, Tabs, Dialog/Sheet, Tooltip, Input, Textarea, SegmentedControl, Toast, Skeleton, CodeBlock, JsonViewer (basic).
-- [ ] Motion primitives: `Reveal`, `Stagger`, `CountUp`, `MagneticButton`, `SlopeDivider`, all using `useReducedMotion()` (FR-FE-73).
-- [ ] Dev showcase route `/[lang]/dev/ui`, excluded from production builds.
-- [ ] Component tests for keyboard and RTL behavior of Dialog, Tabs, and SegmentedControl.
+- [x] `styles/tokens.css` with `@theme` tokens from SRS-FE §4.1; verify contrast pairs and record the results in the file header.
+- [x] Global styles: charcoal canvas, selection color, focus ring, reduced-motion media query resets.
+- [x] Brand assets: inline SVG components `<MetrialMark>` and `<MetrialWordmark>` from `images/metrial-mark*.svg`.
+- [x] UI components (SRS-FE §4.2): Button, Badge (availability pulse), Chip, Card, SectionHeader, Stat, Tabs, Dialog/Sheet, Tooltip, Input, Textarea, SegmentedControl, Toast, Skeleton, CodeBlock, JsonViewer (basic).
+- [x] Motion primitives: `Reveal`, `Stagger`, `CountUp`, `MagneticButton`, `SlopeDivider`, all using `useReducedMotion()` (FR-FE-73).
+- [x] Dev showcase route `/[lang]/dev/ui`, excluded from production builds.
+- [x] Component tests for keyboard and RTL behavior of Dialog, Tabs, and SegmentedControl.
+
+**Status (2026-09-16):** done. jsdom, `@testing-library/jest-dom`, and `@testing-library/user-event` added; Vitest now runs `.tsx` component tests in jsdom (docblock opt-in) with RTL cleanup. Contrast verified and recorded in `tokens.css` header. Semantic status tokens (success/danger/warning/info) added for Toast. Components live in `components/ui`, motion in `components/motion`, demos at `/[lang]/dev/ui` (server page with client demo wrappers so handlers stay on the client; `notFound()` outside dev). Built clean; 48 unit tests pass.
 
 **Done when:** every component renders correctly in en and ar, dark theme, with and without reduced motion; the axe check passes on `/dev/ui`.
 

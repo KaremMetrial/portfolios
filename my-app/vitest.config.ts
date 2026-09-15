@@ -13,8 +13,11 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.{ts,tsx}"],
+    // Default to Node for lib tests; DOM component tests opt in to jsdom with
+    // a `// @vitest-environment jsdom` docblock (see tests/unit/components).
     environment: "node",
+    setupFiles: ["./tests/unit/setup.ts"],
     coverage: {
       include: ["lib/**"],
     },

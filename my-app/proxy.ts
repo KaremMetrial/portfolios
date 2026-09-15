@@ -13,6 +13,12 @@ import { isProductionOrigin } from "@/lib/site";
  */
 
 function securityHeaders(isProduction: boolean): Record<string, string> {
+  // Dev-mode React (Fast Refresh / debugging) requires eval(); production
+  // builds never use it. Keep the CSP strict in production (NFR-FE-S2).
+  const scriptSrc = isProduction
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
   const headers: Record<string, string> = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -21,7 +27,7 @@ function securityHeaders(isProduction: boolean): Record<string, string> {
     // CSP stub: the nonce-based policy ships in FE-6.
     "Content-Security-Policy": [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",

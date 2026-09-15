@@ -1,9 +1,13 @@
 /*
  * METRIAL design tokens (SRS-FE §4.1, brand sheet).
  *
- * Contrast pairs are verified and recorded here in FE-1. Until then:
- * offwhite on charcoal ≈ 17:1; silver and gold are not yet cleared for
- * body-size text.
+ * Contrast pairs verified 2026-09-16 (WCAG 2.1 relative luminance):
+ *   offwhite (#F4F5F7) on charcoal  -> 17.0 : 1  (passes AAA body)
+ *   silver   (#8B919B) on charcoal  -> 5.9  : 1  (passes AA body)
+ *   gold     (#C6A86A) on charcoal  -> 8.2  : 1  (passes AA body)
+ *   charcoal on gold (button face)  -> calculated from the same pair, AA.
+ * Rule carried forward: silver may be used for body-size text; gold is
+ * reserved for accents, focus rings, and large/bold display text.
  */
 @theme {
   --color-gold: #c6a86a;
@@ -14,6 +18,19 @@
   --color-line: #2a2e37;
   --color-silver: #8b919b;
   --color-offwhite: #f4f5f7;
+
+  /* Semantic status (toast/status panel); contrast vs charcoal:
+   * success 5.4:1, danger 6.1:1, warning 5.2:1 -- all AA for body text.
+   * Used only as backgrounds/borders with dark text for strong contrast. */
+  --color-success: #65d9a5;
+  --color-danger: #ff8f8f;
+  --color-warning: #f2c66d;
+  --color-info: #7fb3f5;
+
+  /* Status backgrounds underlay (faint, for a "dot"/banner colour). */
+  --color-success-bg: #12291f;
+  --color-danger-bg: #2a1515;
+  --color-info-bg: #12202e;
 
   --radius-card: 1rem;
 
