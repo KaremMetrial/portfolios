@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend-api
+
+jobs:
+  tests:
+    name: Tests, lint & OpenAPI export
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build CI images
+        run: make ci-build
+
+      - name: Start CI stack
+        run: make ci-up
+
+      - name: Validate composer & run test suite
+        run: make ci-test
+
+      - name: Lint (Pint + PHPStan)
+        run: make ci-lint
+
+      - name: Export OpenAPI document
+        id: export
+        run: make ci-export
+
+      - name: Upload OpenAPI artifact
+        if: always() && steps.export.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: backend-api/artifacts/openapi/api.json
+          if-no-files-found: error
+
+      - name: Tear down CI stack
+        if: always()
+        run: make ci-down

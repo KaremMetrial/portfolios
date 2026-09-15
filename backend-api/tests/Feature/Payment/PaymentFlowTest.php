@@ -1,0 +1,166 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Payment;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Modules\Auth\Domain\Models\User;
+use Modules\Payment\Domain\Enums\PaymentStatus;
+use Modules\Payment\Domain\Models\Payment;
+use Modules\Payment\Infrastructure\Services\PaymentService;
+use Modules\RBAC\Infrastructure\Database\Seeders\RolesAndPermissionsSeeder;
+use Tests\TestCase;
+
+class PaymentFlowTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function createPaymentUser(): User
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('customer');
+
+        return $user;
+    }
+
+    private function fakeStripe(): void
+    {
+        Http::fake([
+            'api.stripe.com/v1/payment_intents' => Http::response([
+                'id' => 'pi_test_123',
+                'client_secret' => 'pi_test_123_secret',
+                'status' => 'requires_payment_method',
+            ]),
+        ]);
+    }
+
+    public function test_payment_creation_returns_next_action_from_gateway(): void
+    {
+        $this->fakeStripe();
+        $user = $this->createPaymentUser();
+
+        $response = $this->actingAs($user)->postJson('/api/v1/payments', [
+            'amount' => '150.50',
+            'currency' => 'EGP',
+            'gateway' => 'stripe',
+            'description' => 'Trip #42',
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.payment.gateway', 'stripe')
+            ->assertJsonPath('data.payment.amount.amount', 15050)
+            ->assertJsonPath('data.next_action.client_secret', 'pi_test_123_secret');
+
+        $this->assertDatabaseHas('payments', [
+            'user_id' => $user->id,
+            'gateway_reference' => 'pi_test_123',
+            'amount' => 15050,
+        ]);
+    }
+
+    public function test_idempotency_key_replays_the_original_response(): void
+    {
+        $this->fakeStripe();
+        $user = $this->createPaymentUser();
+        $key = (string) Str::uuid();
+        $body = ['amount' => '99.99', 'gateway' => 'stripe'];
+
+        $first = $this->actingAs($user)->postJson('/api/v1/payments', $body, ['Idempotency-Key' => $key]);
+        $second = $this->actingAs($user)->postJson('/api/v1/payments', $body, ['Idempotency-Key' => $key]);
+
+        $first->assertCreated();
+        $second->assertCreated();
+        $second->assertHeader('Idempotency-Replayed', 'true');
+
+        // Scoped to this test's own user: EnterpriseDemoSeeder (which
+        // TestCase::$seed runs) plants its own demo payment row, so a
+        // global count would include that unrelated row too.
+        $this->assertSame(1, Payment::query()->where('user_id', $user->id)->count());
+        $this->assertSame(
+            $first->json('data.payment.id'),
+            $second->json('data.payment.id'),
+        );
+    }
+
+    public function test_stripe_webhook_with_valid_signature_transitions_the_payment(): void
+    {
+        $this->fakeStripe();
+        config(['payments.gateways.stripe.webhook_secret' => 'whsec_test']);
+
+        $user = $this->createPaymentUser();
+        $this->actingAs($user)->postJson('/api/v1/payments', [
+            'amount' => '10.00', 'gateway' => 'stripe',
+        ], ['Idempotency-Key' => (string) Str::uuid()])->assertCreated();
+
+        $payload = json_encode([
+            'type' => 'payment_intent.succeeded',
+            'data' => ['object' => ['id' => 'pi_test_123', 'object' => 'payment_intent']],
+        ]);
+
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test');
+
+        $this->call(
+            'POST',
+            '/api/v1/webhooks/payments/stripe',
+            server: [
+                'HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}",
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_ACCEPT' => 'application/json',
+            ],
+            content: $payload,
+        )->assertOk();
+
+        $this->assertSame(
+            PaymentStatus::Succeeded,
+            Payment::query()->firstOrFail()->status,
+        );
+    }
+
+    public function test_webhook_with_invalid_signature_is_rejected(): void
+    {
+        config(['payments.gateways.stripe.webhook_secret' => 'whsec_test']);
+
+        $this->postJson('/api/v1/webhooks/payments/stripe', ['type' => 'x'], [
+            'Stripe-Signature' => 't=1,v1=deadbeef',
+        ])
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'invalid_signature');
+    }
+
+    public function test_successive_partial_refunds_transition_to_refunded_at_the_end(): void
+    {
+        $user = $this->createPaymentUser();
+        $payment = Payment::create([
+            'user_id' => $user->id,
+            'gateway' => 'stripe',
+            'gateway_reference' => 'pi_refund_test',
+            'amount' => 10000,
+            'currency' => 'EGP',
+            'status' => PaymentStatus::Succeeded,
+        ]);
+
+        Http::fake([
+            'api.stripe.com/v1/refunds' => Http::response([
+                'id' => 're_test_123',
+                'status' => 'succeeded',
+            ]),
+        ]);
+
+        $paymentService = app(PaymentService::class);
+
+        // 1. First refund of 4000 (40 EGP)
+        $payment = $paymentService->executeRefund($payment, 4000);
+        $this->assertEquals(4000, $payment->refunded_amount);
+        $this->assertEquals(PaymentStatus::PartiallyRefunded, $payment->status);
+
+        // 2. Second refund of 6000 (60 EGP) - makes it fully refunded
+        $payment = $paymentService->executeRefund($payment, 6000);
+        $this->assertEquals(10000, $payment->refunded_amount);
+        $this->assertEquals(PaymentStatus::Refunded, $payment->status);
+    }
+}

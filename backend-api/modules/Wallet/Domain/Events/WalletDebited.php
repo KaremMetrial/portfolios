@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Wallet\Domain\Events;
+
+use Modules\Shared\Domain\Events\DomainEvent;
+use Modules\Shared\Domain\Events\StoredInOutbox;
+use Modules\Wallet\Domain\Models\Wallet;
+
+class WalletDebited extends DomainEvent implements StoredInOutbox
+{
+    public function __construct(public readonly Wallet $wallet, public readonly int $amount)
+    {
+        parent::__construct();
+    }
+
+    public function eventName(): string
+    {
+        return 'wallet.debited';
+    }
+
+    public function payload(): array
+    {
+        return [
+            'wallet_id' => $this->wallet->id,
+            'user_id' => $this->wallet->user_id,
+            'amount' => $this->amount,
+            'currency' => $this->wallet->currency,
+            'balance' => $this->wallet->balance,
+        ];
+    }
+}

@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "siteName": "Kareem Sabry",
+    "title": "Kareem Sabry (Karem Metrial) · Backend Software Engineer",
+    "description": "Backend Software Engineer in Mansoura, Egypt. PHP, Laravel, and infrastructure that holds up under real traffic: payments, ledgers, queues, and real-time systems."
+  },
+  "nav": {
+    "home": "Home",
+    "projects": "Projects",
+    "experience": "Experience",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "header": {
+    "skipToContent": "Skip to content",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "footer": {
+    "tagline": "The portfolio is the proof.",
+    "builtWith": "This site runs on the same Laravel API it demonstrates — inspect it live.",
+    "rights": "© {year} Kareem Sabry Elsayed (Karem Metrial). All rights reserved."
+  },
+  "language": {
+    "label": "Language",
+    "switch": "العربية",
+    "banner": "View the site in Arabic?",
+    "bannerAction": "عرض الموقع بالعربية",
+    "bannerDismiss": "Dismiss"
+  },
+  "status": {
+    "checking": "Checking…"
+  }
+}

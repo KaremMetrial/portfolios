@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\RBAC\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Shared\Infrastructure\Traits\HasUuid;
+use Spatie\Translatable\HasTranslations;
+
+/**
+ * @property string $id
+ * @property int|string $role_id
+ * @property array<string, string>|null $display_name
+ * @property array<string, string>|null $description
+ * @property int $priority
+ * @property bool $is_system
+ * @property bool $is_editable
+ * @property bool $is_assignable
+ */
+class RoleMetadata extends Model
+{
+    use HasTranslations;
+    use HasUuid;
+
+    protected $table = 'role_metadata';
+
+    public array $translatable = ['display_name', 'description'];
+
+    protected $fillable = [
+        'role_id',
+        'display_name',
+        'description',
+        'priority',
+        'is_system',
+        'is_editable',
+        'is_assignable',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_system' => 'boolean',
+            'is_editable' => 'boolean',
+            'is_assignable' => 'boolean',
+        ];
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+}

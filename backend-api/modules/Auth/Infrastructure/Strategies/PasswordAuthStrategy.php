@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Strategies;
+
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Modules\Auth\Domain\Contracts\AuthStrategyInterface;
+use Modules\Auth\Domain\Models\User;
+use Modules\Shared\Application\Exceptions\ApiException;
+use Modules\Shared\Domain\Contracts\AuditRecorder;
+
+class PasswordAuthStrategy implements AuthStrategyInterface
+{
+    public function __construct(
+        private readonly AuditRecorder $audit
+    ) {}
+
+    /**
+     * Authenticate a user by checking email and password credentials.
+     *
+     * @param  array{email: string, password: string}  $credentials
+     */
+    public function authenticate(array $credentials, ?string $tenantId = null): User
+    {
+        $email = (string) $credentials['email'];
+        $password = (string) $credentials['password'];
+        $throttleKey = 'login-attempts:'.strtolower($email);
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            throw new ApiException(
+                __('auth.throttle', ['seconds' => $seconds]),
+                status: 429,
+                errorCode: 'login_locked'
+            );
+        }
+
+        /** @var User|null $user */
+        $user = User::query()
+            ->when($tenantId !== null, fn ($query) => $query->where('tenant_id', $tenantId))
+            ->where('email', $email)
+            ->first();
+
+        if (! $user || ! Hash::check($password, (string) $user->password)) {
+            RateLimiter::hit($throttleKey, 300); // 5 minutes decay
+            $this->audit->log('auth.login_failed', context: ['email' => $email]);
+
+            throw new ApiException(__('auth.failed'), status: 401, errorCode: 'invalid_credentials');
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        return $user;
+    }
+}

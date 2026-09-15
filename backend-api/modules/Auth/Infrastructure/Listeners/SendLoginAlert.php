@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Listeners;
+
+use Modules\Auth\Domain\Models\User;
+use Modules\Auth\Infrastructure\Notifications\LoginAlertNotification;
+
+class SendLoginAlert
+{
+    public function handle(object $event): void
+    {
+        if (! property_exists($event, 'user')) {
+            return;
+        }
+
+        /** @var User|object|null $user */
+        $user = $event->user;
+
+        if (is_object($user) && method_exists($user, 'notify')) {
+            $ip = request()->ip() ?: '127.0.0.1';
+            $agent = request()->userAgent() ?: 'Unknown Device';
+            $time = now()->toDateTimeString();
+
+            /** @var User $user */
+            $user->notify(new LoginAlertNotification($ip, $agent, $time));
+        }
+    }
+}

@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Wallet\Presentation\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\Shared\Domain\Support\Money;
+use Modules\Wallet\Domain\Models\WalletTransaction;
+
+/** @mixin WalletTransaction */
+class WalletTransactionResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        $currencyVal = $this->wallet !== null ? $this->wallet->currency : config('payments.currency', 'EGP');
+        $currency = is_string($currencyVal) ? $currencyVal : 'EGP';
+
+        return [
+            'id' => $this->id,
+            'type' => $this->type,
+            'amount' => Money::of($this->amount, $currency),
+            'balance_after' => Money::of($this->balance_after, $currency),
+            'description' => $this->description,
+            'reference_type' => $this->reference_type,
+            'reference_id' => $this->reference_id,
+            'created_at' => $this->created_at?->toIso8601String(),
+        ];
+    }
+}

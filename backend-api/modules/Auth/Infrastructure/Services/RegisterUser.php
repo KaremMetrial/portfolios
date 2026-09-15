@@ -1,0 +1,61 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Services;
+
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Modules\Auth\Domain\Events\UserRegistered;
+use Modules\Auth\Domain\Models\User;
+use Modules\Media\Infrastructure\Services\MediaUploadService;
+use Modules\Shared\Domain\Contracts\AuditRecorder;
+use Modules\Shared\Infrastructure\Events\EventBus;
+
+/**
+ * Single-responsibility service action: create the account, assign the default role,
+ * publish the domain event (in-process listeners + outbox for external
+ * consumers). Everything inside one atomic database transaction.
+ */
+class RegisterUser
+{
+    public function __construct(
+        private readonly EventBus $events,
+        private readonly AuditRecorder $audit,
+        private readonly MediaUploadService $mediaUpload
+    ) {}
+
+    public function __invoke(array $data, ?string $tenantId = null): User
+    {
+        return DB::transaction(function () use ($data, $tenantId) {
+            $user = User::query()->create([
+                'tenant_id' => $tenantId ?? ($data['tenant_id'] ?? null),
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'password' => $data['password'],
+                'locale' => $data['locale'] ?? app()->getLocale(),
+            ]);
+
+            $user->assignRole('customer');
+
+            if (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
+                $this->mediaUpload->storeUploadedFile(
+                    $data['avatar'],
+                    $user,
+                    $user->tenant_id,
+                    'avatar',
+                    true,
+                    [],
+                    User::class,
+                    $user->id
+                );
+            }
+
+            $this->events->publish(new UserRegistered($user));
+            $this->audit->log('auth.registered', $user, tenantId: $tenantId);
+
+            return $user;
+        });
+    }
+}

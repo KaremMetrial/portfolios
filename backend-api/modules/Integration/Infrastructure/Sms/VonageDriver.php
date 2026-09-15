@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Integration\Infrastructure\Sms;
+
+use Illuminate\Support\Facades\Http;
+use Modules\Integration\Domain\Contracts\SmsProvider;
+use Modules\Integration\Infrastructure\Support\CircuitBreaker;
+use Modules\Shared\Application\Exceptions\IntegrationException;
+
+/**
+ * Vonage (Nexmo) SMS API. Docs: https://developer.vonage.com/en/messaging/sms
+ */
+class VonageDriver implements SmsProvider
+{
+    public function __construct(private readonly array $config) {}
+
+    public function send(string $to, string $message): string
+    {
+        $result = CircuitBreaker::make()->call('vonage', function () use ($to, $message) {
+            $timeoutVal = config('integrations.http.timeout', 15);
+            $timeout = is_numeric($timeoutVal) ? (int) $timeoutVal : 15;
+
+            $appNameVal = config('app.name');
+            $appName = is_string($appNameVal) ? $appNameVal : 'Laravel';
+
+            $keyVal = $this->config['key'] ?? '';
+            $key = is_scalar($keyVal) ? (string) $keyVal : '';
+            $secretVal = $this->config['secret'] ?? '';
+            $secret = is_scalar($secretVal) ? (string) $secretVal : '';
+            $fromVal = $this->config['from'] ?? $appName;
+            $from = is_scalar($fromVal) ? (string) $fromVal : $appName;
+
+            $response = Http::asForm()
+                ->timeout($timeout)
+                ->post('https://rest.nexmo.com/sms/json', [
+                    'api_key' => $key,
+                    'api_secret' => $secret,
+                    'from' => $from,
+                    'to' => ltrim($to, '+'),
+                    'text' => $message,
+                    'type' => 'unicode', // Arabic-safe
+                ]);
+
+            $statusVal = data_get($response->json(), 'messages.0.status', '');
+            $status = is_scalar($statusVal) ? (string) $statusVal : '';
+
+            if ($response->failed() || $status !== '0') {
+                $errTextVal = data_get($response->json(), 'messages.0.error-text');
+                $errText = is_string($errTextVal) ? $errTextVal : __('integrations.sms_send_failed', ['provider' => 'vonage']);
+                throw new IntegrationException(
+                    $errText,
+                    provider: 'vonage',
+                    context: ['status' => $response->status(), 'provider_status' => $status],
+                );
+            }
+
+            $msgIdVal = data_get($response->json(), 'messages.0.message-id', '');
+
+            return is_scalar($msgIdVal) ? (string) $msgIdVal : '';
+        });
+
+        return is_string($result) ? $result : '';
+    }
+}

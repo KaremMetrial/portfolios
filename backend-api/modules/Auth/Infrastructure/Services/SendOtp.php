@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Services;
+
+use Illuminate\Support\Facades\DB;
+use Modules\Auth\Domain\Events\OtpGenerated;
+use Modules\Auth\Domain\Models\OtpCode;
+use Modules\Shared\Application\Exceptions\ApiException;
+use Modules\Shared\Infrastructure\Events\EventBus;
+
+class SendOtp
+{
+    public function __construct(private readonly EventBus $events) {}
+
+    public function __invoke(string $identifier, string $action, string $guard = 'web'): OtpCode
+    {
+        return DB::transaction(function () use ($identifier, $action, $guard) {
+            // Enforce a 60-second cooldown on resending OTP
+            $recentOtp = OtpCode::query()
+                ->where('identifier', $identifier)
+                ->where('guard', $guard)
+                ->where('action', $action)
+                ->where('created_at', '>=', now()->subSeconds(60))
+                ->first();
+
+            if ($recentOtp) {
+                throw new ApiException(
+                    __('auth.otp_cooldown', ['seconds' => max(1, 60 - now()->diffInSeconds($recentOtp->created_at))]),
+                    status: 429,
+                    errorCode: 'otp_throttle'
+                );
+            }
+
+            // Deactivate any existing active OTP codes for this identifier, guard, and action
+            OtpCode::query()
+                ->where('identifier', $identifier)
+                ->where('guard', $guard)
+                ->where('action', $action)
+                ->active()
+                ->update(['expires_at' => now()]);
+
+            // Generate a random 6-digit numeric OTP code, or use a fixed code for local/testing
+            $code = app()->environment('local', 'testing')
+                ? '123456'
+                : (string) random_int(100000, 999999);
+
+            // Create a new OTP code valid for 10 minutes
+            $otp = OtpCode::query()->create([
+                'identifier' => $identifier,
+                'code' => $code,
+                'guard' => $guard,
+                'action' => $action,
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+            ]);
+
+            // Publish the OtpGenerated event
+            $this->events->publish(new OtpGenerated($identifier, $code, $action, $guard));
+
+            return $otp;
+        });
+    }
+}

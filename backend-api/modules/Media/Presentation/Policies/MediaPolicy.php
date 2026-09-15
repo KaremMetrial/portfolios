@@ -1,0 +1,77 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Media\Presentation\Policies;
+
+use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Auth\Domain\Models\User;
+use Modules\Media\Domain\Models\Media;
+
+class MediaPolicy
+{
+    use HandlesAuthorization;
+
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->can('admin.super')) {
+            return true;
+        }
+
+        return null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('media.upload') || $user->can('media.manage');
+    }
+
+    public function view(User $user, ?Media $media = null): bool
+    {
+        if ($media === null) {
+            return true;
+        }
+
+        // Public files can be viewed by anyone authenticated.
+        if ($media->is_public) {
+            return true;
+        }
+
+        // Owners can view.
+        if ((string) $media->created_by === (string) $user->id) {
+            return true;
+        }
+
+        // For private files owned by others, only managers can view.
+        return $user->can('media.manage');
+    }
+
+    public function download(User $user, ?Media $media = null): bool
+    {
+        return $this->view($user, $media);
+    }
+
+    /** Confirming an upload mutates it (checksum, dedup, state transition) — owner or manager only. */
+    public function confirm(User $user, ?Media $media = null): bool
+    {
+        if ($media === null) {
+            return $user->can('media.upload') || $user->can('media.manage');
+        }
+
+        return (string) $media->created_by === (string) $user->id || $user->can('media.manage');
+    }
+
+    public function delete(User $user, ?Media $media = null): bool
+    {
+        if ($media === null) {
+            return $user->can('media.delete');
+        }
+
+        return (string) $media->created_by === (string) $user->id || $user->can('media.delete');
+    }
+}

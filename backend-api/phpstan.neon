@@ -1,0 +1,29 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - modules/
+    level: 8
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        -
+            identifier: missingType.iterableValue
+        -
+            identifier: missingType.generics
+        -
+            identifier: function.alreadyNarrowedType
+            path: modules/Shared/Infrastructure/Traits/HasTranslations.php
+        -
+            identifier: function.alreadyNarrowedType
+            path: modules/Shared/Infrastructure/Translation/Traits/AutoTranslates.php
+        -
+            # Larastan's env()-outside-config-directory check only recognises
+            # Laravel's own config_path(); it doesn't know modules/*/Infrastructure/config
+            # is where each module now genuinely owns and merges its config
+            # (via mergeConfigFrom()), so env() there is exactly as safe as it
+            # was in config/*.php before these files moved.
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: modules/*/Infrastructure/config/*.php

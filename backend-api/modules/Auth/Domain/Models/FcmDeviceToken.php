@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Modules\Shared\Infrastructure\Traits\HasUuid;
+
+/**
+ * @property string $id
+ * @property string $user_id
+ * @property string $device_token
+ * @property string|null $device_id
+ * @property string|null $device_name
+ * @property string|null $platform
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property User|null $user
+ */
+class FcmDeviceToken extends Model
+{
+    use HasUuid;
+
+    protected $table = 'fcm_device_tokens';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'user_id',
+        'device_token',
+        'device_id',
+        'device_name',
+        'platform',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}

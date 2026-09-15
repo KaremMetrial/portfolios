@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Domain\Events;
+
+use Modules\Auth\Domain\Models\User;
+use Modules\Shared\Domain\Events\DomainEvent;
+use Modules\Shared\Domain\Events\StoredInOutbox;
+
+class AccountLockedOut extends DomainEvent implements StoredInOutbox
+{
+    public function __construct(
+        public readonly ?User $user = null,
+        public readonly ?string $email = null
+    ) {
+        parent::__construct();
+    }
+
+    public function eventName(): string
+    {
+        return 'auth.account_locked_out';
+    }
+
+    public function payload(): array
+    {
+        return [
+            'user_id' => $this->user?->getKey(),
+            'email' => $this->email ?? $this->user?->email,
+        ];
+    }
+}

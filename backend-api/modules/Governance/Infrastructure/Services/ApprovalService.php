@@ -1,0 +1,156 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Governance\Infrastructure\Services;
+
+use Illuminate\Support\Facades\DB;
+use Modules\Auth\Domain\Models\User;
+use Modules\Governance\Domain\Enums\ApprovalStatus;
+use Modules\Governance\Domain\Models\ApprovalRequest;
+use Modules\Shared\Application\Exceptions\ApiException;
+use Modules\Shared\Application\Exceptions\DomainException;
+use Modules\Shared\Domain\Contracts\ApprovalGateway;
+use Modules\Shared\Infrastructure\Tenancy\TenantManager;
+use Throwable;
+
+/**
+ * Maker–checker workflow for sensitive operations (refunds, payouts,
+ * permission changes...).
+ *
+ *  1. request()  — a maker records intent + payload; nothing executes.
+ *  2. approve()  — a DIFFERENT user with the right permission approves;
+ *                  the handler registered in config('governance.approvals
+ *                  .handlers') is invoked with the payload.
+ *  3. reject()   — closes the request without executing.
+ */
+class ApprovalService implements ApprovalGateway
+{
+    public function __construct(private readonly AuditLogger $audit) {}
+
+    public function request(string $action, array $payload, User $requester): ApprovalRequest
+    {
+        $this->assertActionRegistered($action);
+
+        $request = ApprovalRequest::query()->create([
+            'action' => $action,
+            'payload' => $payload,
+            'status' => ApprovalStatus::Pending,
+            'requested_by' => $requester->getKey(),
+        ]);
+
+        $this->audit->log('approval.requested', $request, newValues: ['action' => $action]);
+
+        return $request;
+    }
+
+    public function approve(ApprovalRequest $request, User $approver): ApprovalRequest
+    {
+        $requestedByVal = $request->requested_by;
+        $requestedBy = is_scalar($requestedByVal) ? (string) $requestedByVal : '';
+        $approverKeyVal = $approver->getKey();
+        $approverKey = is_scalar($approverKeyVal) ? (string) $approverKeyVal : '';
+
+        if ($requestedBy === $approverKey && ! $approver->can('admin.super')) {
+            throw new DomainException(__('governance.cannot_approve_own_request'), 'self_approval_forbidden');
+        }
+
+        try {
+            /** @var ApprovalRequest $lockedRequest */
+            $lockedRequest = DB::transaction(function () use ($request, $approver) {
+                /** @var ApprovalRequest $lr */
+                $lr = ApprovalRequest::query()->withoutGlobalScopes()->lockForUpdate()->findOrFail($request->getKey());
+
+                $this->assertPending($lr);
+
+                $lr->forceFill([
+                    'status' => ApprovalStatus::Approved,
+                    'decided_by' => $approver->getKey(),
+                    'decided_at' => now(),
+                ])->save();
+
+                $tenantIdVal = $lr->tenant_id ?? ($lr->payload['tenant_id'] ?? null);
+                $tenantId = is_scalar($tenantIdVal) ? (is_int($tenantIdVal) ? $tenantIdVal : (string) $tenantIdVal) : null;
+                app(TenantManager::class)->runInContext($tenantId, function () use ($lr) {
+                    $handlerClass = $this->handlerFor($lr->action);
+                    if ($handlerClass !== '' && class_exists($handlerClass)) {
+                        $handler = app($handlerClass);
+                        if (is_callable($handler)) {
+                            $handler($lr->payload, $lr);
+                        }
+                    }
+                });
+
+                $lr->forceFill(['status' => ApprovalStatus::Executed])->save();
+
+                return $lr;
+            });
+        } catch (Throwable $e) {
+            report($e);
+            $lockedRequest = DB::transaction(function () use ($request, $approver, $e) {
+                /** @var ApprovalRequest $lr */
+                $lr = ApprovalRequest::query()->withoutGlobalScopes()->lockForUpdate()->findOrFail($request->getKey());
+                $lr->forceFill([
+                    'status' => ApprovalStatus::Failed,
+                    'decided_by' => $approver->getKey(),
+                    'decided_at' => now(),
+                    'reason' => mb_substr($e->getMessage(), 0, 500),
+                ])->save();
+
+                return $lr;
+            });
+
+            if ($e instanceof DomainException || $e instanceof ApiException) {
+                throw $e;
+            }
+        }
+
+        $this->audit->log('approval.decided', $lockedRequest, newValues: ['status' => $lockedRequest->status->value]);
+
+        return $lockedRequest->refresh();
+    }
+
+    public function reject(ApprovalRequest $request, User $approver, ?string $reason = null): ApprovalRequest
+    {
+        return DB::transaction(function () use ($request, $approver, $reason) {
+            /** @var ApprovalRequest $lockedRequest */
+            $lockedRequest = ApprovalRequest::query()->withoutGlobalScopes()->lockForUpdate()->findOrFail($request->getKey());
+
+            $this->assertPending($lockedRequest);
+
+            $lockedRequest->forceFill([
+                'status' => ApprovalStatus::Rejected,
+                'decided_by' => $approver->getKey(),
+                'decided_at' => now(),
+                'reason' => $reason,
+            ])->save();
+
+            $this->audit->log('approval.rejected', $lockedRequest, newValues: ['reason' => $reason]);
+
+            return $lockedRequest->refresh();
+        });
+    }
+
+    private function assertPending(ApprovalRequest $request): void
+    {
+        if ($request->status !== ApprovalStatus::Pending) {
+            throw new DomainException(__('governance.approval_already_decided'), 'approval_not_pending');
+        }
+    }
+
+    private function assertActionRegistered(string $action): void
+    {
+        $handlers = config('governance.approvals.handlers', []);
+        if (! is_array($handlers) || ! array_key_exists($action, $handlers)) {
+            throw new DomainException(__('governance.unknown_action', ['action' => $action]), 'unknown_approval_action');
+        }
+    }
+
+    private function handlerFor(string $action): string
+    {
+        $handlers = config('governance.approvals.handlers', []);
+        $handler = is_array($handlers) ? ($handlers[$action] ?? '') : '';
+
+        return is_string($handler) ? $handler : '';
+    }
+}

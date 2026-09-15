@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Payment\Presentation\Http\Controllers\Api\V1;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Modules\Payment\Infrastructure\Services\PaymentService;
+use Modules\Shared\Presentation\Http\Controllers\ApiController;
+
+/**
+ * Public (unauthenticated) endpoint gateways call back. Authenticity comes
+ * from per-gateway signature verification inside PaymentService, never from
+ * a session. Keep this route out of the tenant/idempotency middleware.
+ */
+class PaymentWebhookController extends ApiController
+{
+    public function __invoke(Request $request, string $gateway, PaymentService $payments): JsonResponse
+    {
+        $payment = $payments->handleWebhook($gateway, $request);
+
+        // Gateways only need a 2xx; anything else triggers their retries.
+        return $this->respond(['payment_id' => $payment->id, 'status' => $payment->status]);
+    }
+}

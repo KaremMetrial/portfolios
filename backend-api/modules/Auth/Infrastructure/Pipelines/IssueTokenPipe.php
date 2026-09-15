@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Pipelines;
+
+use Closure;
+use Modules\Auth\Domain\Events\UserLoggedIn;
+use Modules\Auth\Domain\Events\UserLoggedInByOtp;
+use Modules\Auth\Presentation\Http\Resources\UserResource;
+use Modules\Shared\Domain\Contracts\AuditRecorder;
+use Modules\Shared\Infrastructure\Events\EventBus;
+
+class IssueTokenPipe
+{
+    public function __construct(
+        private readonly AuditRecorder $audit,
+        private readonly EventBus $events
+    ) {}
+
+    /**
+     * Handle an incoming authentication context and issue API tokens and sessions.
+     *
+     * @param  Closure(AuthContext): mixed  $next
+     */
+    public function handle(AuthContext $context, Closure $next): mixed
+    {
+        $user = $context->user;
+
+        if (! $user) {
+            return $next($context);
+        }
+
+        $abilities = [];
+        $abilities = $user->hasPermissionTo('admin.super')
+            ? ['*']
+            : $user->getPermissionsViaRoles()->pluck('name')->toArray();
+
+        if (empty($abilities)) {
+            $abilities = [];
+        }
+
+        $token = $user->createToken($context->deviceName, $abilities)->plainTextToken;
+        $context->setToken($token);
+
+        if ($context->request->filled('device_token')) {
+            $user->updateFcmDeviceToken(
+                $context->request->string('device_token')->value(),
+                $context->request->string('device_id')->value() ?: null,
+                $context->request->string('device_name')->value() ?: null,
+                $context->request->string('platform')->value() ?: null
+            );
+        }
+
+        if ($tokenModel = $user->tokens()->latest('id')->first()) {
+            $user->sessions()->updateOrCreate(
+                ['personal_access_token_id' => $tokenModel->id],
+                [
+                    'ip_address' => $context->request->ip() ?: '127.0.0.1',
+                    'user_agent' => $context->request->userAgent() ?: 'Unknown',
+                    'device_fingerprint' => $context->request->string('device_fingerprint')->value() ?: null,
+                    'last_activity_at' => now(),
+                ]
+            );
+        }
+
+        $this->audit->log('auth.login', $user);
+
+        if ($context->authMethod === 'otp') {
+            $this->events->publish(new UserLoggedInByOtp($user, $context->guard));
+        } else {
+            event(new UserLoggedIn($user));
+        }
+
+        $context->payload = [
+            'user' => (new UserResource($user->load('roles')))->resolve(),
+            'token' => $token,
+        ];
+
+        return $next($context);
+    }
+}

@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\RBAC\Infrastructure\Actions;
+
+use Illuminate\Support\Facades\DB;
+use Modules\Auth\Domain\Models\User;
+use Modules\RBAC\Domain\Contracts\RoleRepositoryInterface;
+use Modules\RBAC\Domain\Events\UserRolesUpdated;
+use Modules\Shared\Application\Exceptions\DomainException;
+use Modules\Shared\Infrastructure\Events\EventBus;
+
+class SyncUserRolesAction
+{
+    public function __construct(
+        private readonly RoleRepositoryInterface $roleRepository,
+        private readonly EventBus $eventBus
+    ) {}
+
+    /**
+     * @param  array<int, string>  $roleNames
+     */
+    public function execute(User $user, array $roleNames, string $mode = 'replace'): User
+    {
+        // Validate roles exist and are assignable
+        $roles = $this->roleRepository->all()->whereIn('name', $roleNames);
+
+        if ($roles->count() !== count($roleNames)) {
+            throw new DomainException(__('rbac.invalid_roles_provided'), 'invalid_roles_provided');
+        }
+
+        foreach ($roles as $role) {
+            if ($role->metadata && ! $role->metadata->is_assignable) {
+                throw new DomainException(__('rbac.role_not_assignable', ['role' => $role->name]), 'role_not_assignable');
+            }
+        }
+
+        return DB::transaction(function () use ($user, $roleNames, $mode) {
+            if ($mode === 'replace') {
+                $user->syncRoles($roleNames);
+            } elseif ($mode === 'add') {
+                $user->assignRole($roleNames);
+            } elseif ($mode === 'remove') {
+                foreach ($roleNames as $roleName) {
+                    $user->removeRole($roleName);
+                }
+            }
+
+            /** @var array<int, string> $finalRoles */
+            $finalRoles = array_map(fn ($v) => is_scalar($v) ? (string) $v : '', $user->roles()->pluck('name')->toArray());
+
+            $this->eventBus->publish(new UserRolesUpdated($user, $finalRoles));
+
+            return $user;
+        });
+    }
+}

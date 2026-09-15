@@ -1,0 +1,130 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Media\Infrastructure\Services;
+
+use Illuminate\Support\Facades\Storage;
+use Modules\Media\Domain\Contracts\ContentModerator;
+use Modules\Media\Domain\Contracts\VirusScanner;
+use Modules\Media\Domain\Enums\MediaStatus;
+use Modules\Media\Domain\Enums\MediaType;
+use Modules\Media\Domain\Events\MediaQuarantined;
+use Modules\Media\Domain\Events\MediaVerified;
+use Modules\Media\Domain\Models\Media;
+use Modules\Media\Infrastructure\Jobs\ProcessMediaVariants;
+
+class MediaVerificationService
+{
+    public function __construct(
+        private readonly VirusScanner $virusScanner,
+        private readonly ContentModerator $moderator,
+        private readonly MediaStateMachine $stateMachine
+    ) {}
+
+    public function verify(Media $media): void
+    {
+        $blob = $media->blob;
+        if (! $blob) {
+            $this->stateMachine->transition($media, MediaStatus::Failed);
+
+            return;
+        }
+
+        $disk = Storage::disk($blob->disk);
+
+        $isLocal = false;
+        try {
+            $filePath = $disk->path($blob->path);
+            $isLocal = true;
+        } catch (\Throwable) {
+            $tempPath = tempnam(sys_get_temp_dir(), 'media_verify_');
+            if ($tempPath === false) {
+                throw new \RuntimeException(__('media.temp_file_failed'));
+            }
+            $source = $disk->readStream($blob->path);
+            if (! $source) {
+                throw new \RuntimeException(__('media.stream_read_failed', ['path' => $blob->path]));
+            }
+            $target = fopen($tempPath, 'wb');
+            if (! $target) {
+                fclose($source);
+                throw new \RuntimeException(__('media.stream_write_failed', ['path' => $tempPath]));
+            }
+
+            stream_copy_to_stream($source, $target);
+            fclose($source);
+            fclose($target);
+            $filePath = $tempPath;
+        }
+
+        try {
+            // 1. Virus Scanning
+            if (config('media.virus_scan_enabled', true)) {
+                $scanResult = $this->virusScanner->scan($filePath);
+
+                $blob->virus_status = $scanResult->status;
+                $blob->virus_scan_details = [
+                    'engine' => $scanResult->engine,
+                    'version' => $scanResult->version,
+                    'message' => $scanResult->message,
+                    'infected_files' => $scanResult->infectedFiles,
+                    'duration' => $scanResult->duration,
+                ];
+                $blob->save();
+
+                if (! $scanResult->isClean()) {
+                    $this->stateMachine->transition($media, MediaStatus::Quarantined);
+                    $media->update([
+                        'processing_error' => __('media.virus_detected'),
+                        'quarantined_at' => now(),
+                    ]);
+                    event(new MediaQuarantined($media, 'virus_detected'));
+
+                    return;
+                }
+            }
+
+            // 2. Content Moderation
+            if (config('media.moderation_enabled', true) && in_array($media->media_type, [MediaType::Image, MediaType::Video], true)) {
+                $modResult = $this->moderator->moderate($filePath);
+
+                $media->moderation_status = $modResult->approved ? 'approved' : 'flagged';
+                $media->moderation_details = [
+                    'provider' => $modResult->provider,
+                    'confidence' => $modResult->confidence,
+                    'labels' => $modResult->labels,
+                    'adultScore' => $modResult->adultScore,
+                    'violenceScore' => $modResult->violenceScore,
+                ];
+                $media->save();
+
+                if (! $modResult->approved) {
+                    $this->stateMachine->transition($media, MediaStatus::Quarantined);
+                    $media->update([
+                        'processing_error' => __('media.nsfw_detected'),
+                        'quarantined_at' => now(),
+                    ]);
+                    event(new MediaQuarantined($media, 'nsfw_detected'));
+
+                    return;
+                }
+            }
+
+            // Mark blob as verified
+            $blob->update(['verified_at' => now()]);
+
+            // Transition to processing state
+            $this->stateMachine->transition($media, MediaStatus::Processing);
+
+            event(new MediaVerified($media));
+
+            // Trigger asynchronous variant/optimization pipeline job
+            ProcessMediaVariants::dispatch($media->id);
+        } finally {
+            if (! $isLocal && file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
+    }
+}

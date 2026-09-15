@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Integration\Presentation\Policies;
+
+use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Auth\Domain\Models\User;
+use Modules\Integration\Domain\Models\OAuthProvider;
+
+class OAuthProviderPolicy
+{
+    use HandlesAuthorization;
+
+    /**
+     * Super-admin override: grant all abilities if user has admin.super permission.
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->can('admin.super')) {
+            return true;
+        }
+
+        return null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->can('integrations.oauth.view');
+    }
+
+    public function view(User $user, ?OAuthProvider $provider = null): bool
+    {
+        return $user->can('integrations.oauth.view') && $this->belongsToUserTenant($user, $provider);
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('integrations.oauth.manage');
+    }
+
+    public function update(User $user, ?OAuthProvider $provider = null): bool
+    {
+        return $user->can('integrations.oauth.manage') && $this->belongsToUserTenant($user, $provider);
+    }
+
+    public function delete(User $user, ?OAuthProvider $provider = null): bool
+    {
+        return $user->can('integrations.oauth.manage') && $this->belongsToUserTenant($user, $provider);
+    }
+
+    public function toggle(User $user, ?OAuthProvider $provider = null): bool
+    {
+        return $user->can('integrations.oauth.manage') && $this->belongsToUserTenant($user, $provider);
+    }
+
+    /**
+     * Defense in depth alongside the controller's forTenant() query scope:
+     * a provider with tenant_id=null is a shared/global provider visible to
+     * every tenant, but one with a tenant_id must match the caller's own —
+     * this is what stops a valid permission in tenant A from reaching
+     * tenant B's OAuth client_secret.
+     */
+    private function belongsToUserTenant(User $user, ?OAuthProvider $provider): bool
+    {
+        if ($provider === null || $provider->tenant_id === null) {
+            return true;
+        }
+
+        return (string) $provider->tenant_id === (string) $user->tenant_id;
+    }
+}

@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "siteName": "كريم صبري",
+    "title": "كريم صبري · مهندس برمجيات باك اند",
+    "description": "مهندس برمجيات باك اند في المنصورة، مصر. PHP وLaravel وبنية تحتية تصمد أمام الترافيك الحقيقي: مدفوعات ودفاتر وطوابير وأنظمة فورية."
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "projects": "المشاريع",
+    "experience": "الخبرات",
+    "about": "عني",
+    "contact": "تواصل"
+  },
+  "header": {
+    "skipToContent": "تجاوز إلى المحتوى",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة"
+  },
+  "footer": {
+    "tagline": "البورتفوليو هو الدليل.",
+    "builtWith": "هذا الموقع يعمل على نفس واجهة Laravel التي يعرضها — جرّبها مباشرة.",
+    "rights": "© {year} كريم صبري السيد (Karem Metrial). جميع الحقوق محفوظة."
+  },
+  "language": {
+    "label": "اللغة",
+    "switch": "English",
+    "banner": "عرض الموقع بالإنجليزية؟",
+    "bannerAction": "View the site in English",
+    "bannerDismiss": "إخفاء"
+  },
+  "status": {
+    "checking": "جارٍ التحقق…"
+  }
+}

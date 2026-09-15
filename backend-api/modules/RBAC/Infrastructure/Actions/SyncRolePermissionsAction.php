@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\RBAC\Infrastructure\Actions;
+
+use Illuminate\Support\Facades\DB;
+use Modules\RBAC\Domain\Contracts\PermissionRepositoryInterface;
+use Modules\RBAC\Domain\Events\RolePermissionsUpdated;
+use Modules\RBAC\Domain\Models\Role;
+use Modules\Shared\Application\Exceptions\DomainException;
+use Modules\Shared\Infrastructure\Events\EventBus;
+
+class SyncRolePermissionsAction
+{
+    public function __construct(
+        private readonly PermissionRepositoryInterface $permissionRepository,
+        private readonly EventBus $eventBus
+    ) {}
+
+    /**
+     * @param  array<int, string>  $permissionNames
+     */
+    public function execute(Role $role, array $permissionNames, string $mode = 'replace'): Role
+    {
+        if ($role->metadata && ! $role->metadata->is_editable) {
+            throw new DomainException(__('rbac.role_not_editable', ['role' => $role->name]), 'role_not_editable');
+        }
+
+        // Validate that permissions exist
+        $permissions = $this->permissionRepository->findByNames($permissionNames);
+        if ($permissions->count() !== count($permissionNames)) {
+            throw new DomainException(__('rbac.invalid_permissions_provided'), 'invalid_permissions_provided');
+        }
+
+        return DB::transaction(function () use ($role, $permissionNames, $mode) {
+            if ($mode === 'replace') {
+                $role->syncPermissions($permissionNames);
+            } elseif ($mode === 'add') {
+                $role->givePermissionTo($permissionNames);
+            } elseif ($mode === 'remove') {
+                foreach ($permissionNames as $permissionName) {
+                    $role->revokePermissionTo($permissionName);
+                }
+            }
+
+            // Pluck the exact final permissions for the event payload
+            /** @var array<int, string> $finalPermissions */
+            $finalPermissions = array_map(fn ($v) => is_scalar($v) ? (string) $v : '', $role->permissions()->pluck('name')->toArray());
+
+            $this->eventBus->publish(new RolePermissionsUpdated($role, $finalPermissions));
+
+            return $role;
+        });
+    }
+}

@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Modules\Shared\Infrastructure\Traits\HasUuid;
+
+/**
+ * @property string $id
+ * @property string $user_id
+ * @property string $provider
+ * @property string $provider_user_id
+ * @property string|null $provider_email
+ * @property string|null $access_token
+ * @property string|null $refresh_token
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property User|null $user
+ */
+class UserSocialIdentity extends Model
+{
+    use HasUuid;
+
+    protected $table = 'user_social_identities';
+
+    protected $fillable = [
+        'user_id',
+        'provider',
+        'provider_user_id',
+        'provider_email',
+        'access_token',
+        'refresh_token',
+        'expires_at',
+    ];
+
+    protected $hidden = [
+        'access_token',
+        'refresh_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'access_token' => 'encrypted',
+            'refresh_token' => 'encrypted',
+            'expires_at' => 'datetime',
+        ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}

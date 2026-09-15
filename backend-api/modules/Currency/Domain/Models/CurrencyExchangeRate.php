@@ -1,0 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Currency\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Modules\Shared\Infrastructure\Traits\HasUuid;
+
+/**
+ * @property string $id
+ * @property string $currency_code
+ * @property string $rate_to_base
+ * @property string|null $provider_name
+ * @property string|null $provider_version
+ * @property string|null $api_schema_version
+ * @property string|null $request_id
+ * @property string|null $provider_response_hash
+ * @property string|null $sync_batch_id
+ * @property bool $is_manual
+ * @property bool $is_locked
+ * @property Carbon $effective_at
+ * @property Carbon $expires_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Currency|null $currency
+ */
+class CurrencyExchangeRate extends Model
+{
+    use HasUuid;
+
+    protected $fillable = [
+        'currency_code',
+        'rate_to_base',
+        'provider_name',
+        'provider_version',
+        'api_schema_version',
+        'request_id',
+        'provider_response_hash',
+        'sync_batch_id',
+        'is_manual',
+        'is_locked',
+        'effective_at',
+        'expires_at',
+    ];
+
+    protected function casts(): array
+    {
+        $scaleVal = config('currencies.scale', 14);
+        $scale = is_numeric($scaleVal) ? (int) $scaleVal : 14;
+
+        return [
+            'rate_to_base' => 'decimal:'.$scale,
+            'is_manual' => 'boolean',
+            'is_locked' => 'boolean',
+            'effective_at' => 'datetime',
+            'expires_at' => 'datetime',
+        ];
+    }
+
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'currency_code', 'code');
+    }
+}

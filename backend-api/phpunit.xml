@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+            <directory>modules</directory>
+        </include>
+    </source>
+    <php>
+        <server name="APP_ENV" value="testing"/>
+        <server name="APP_KEY" value="base64:0KURKu3kgjgA7j+cWk1okz7QFVVLAjictuMtMCqkZWA="/>
+        <server name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <server name="BCRYPT_ROUNDS" value="4"/>
+        <server name="CACHE_STORE" value="array"/>
+        <server name="DB_CONNECTION" value="sqlite"/>
+        <server name="DB_DATABASE" value=":memory:"/>
+        <server name="LOG_CHANNEL" value="null"/>
+        <server name="MAIL_MAILER" value="array"/>
+        <server name="QUEUE_CONNECTION" value="sync"/>
+        <server name="SESSION_DRIVER" value="array"/>
+        <server name="AUDIT_ENABLED" value="true"/>
+        <!-- Base auth tests exercise registration; RegistrationGateTest disables it per test. -->
+        <server name="FEATURE_PUBLIC_REGISTRATION" value="true"/>
+        <!-- The portfolio disables these at runtime, but the modules remain in the
+             codebase and their suites must keep running (ModuleTogglesTest flips them). -->
+        <server name="MODULE_PAYMENT_ENABLED" value="true"/>
+        <server name="MODULE_WALLET_ENABLED" value="true"/>
+        <server name="MODULE_COMMUNICATION_ENABLED" value="true"/>
+        <server name="MODULE_INTEGRATION_OAUTH_ENABLED" value="true"/>
+    </php>
+</phpunit>

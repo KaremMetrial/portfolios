@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Domain\Events;
+
+use Modules\Shared\Domain\Events\DomainEvent;
+use Modules\Shared\Domain\Events\StoredInOutbox;
+
+class OtpVerified extends DomainEvent implements StoredInOutbox
+{
+    public function __construct(
+        public readonly string $identifier,
+        public readonly string $action,
+        public readonly string $guard
+    ) {
+        parent::__construct();
+    }
+
+    public function eventName(): string
+    {
+        return 'auth.otp_verified';
+    }
+
+    public function payload(): array
+    {
+        return [
+            'identifier' => $this->identifier,
+            'action' => $this->action,
+            'guard' => $this->guard,
+        ];
+    }
+}

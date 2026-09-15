@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Wallet\Presentation\Policies;
+
+use Illuminate\Auth\Access\HandlesAuthorization;
+use Modules\Auth\Domain\Models\User;
+use Modules\Wallet\Domain\Models\Wallet;
+
+class WalletPolicy
+{
+    use HandlesAuthorization;
+
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->can('admin.super')) {
+            return true;
+        }
+
+        return null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->can('wallets.view');
+    }
+
+    public function manage(User $user): bool
+    {
+        return $user->can('wallets.manage');
+    }
+
+    public function view(User $user, ?Wallet $wallet = null): bool
+    {
+        if ($wallet === null) {
+            return $user->can('wallets.view');
+        }
+
+        return (string) $user->id === (string) $wallet->user_id || $user->can('wallets.view');
+    }
+
+    public function viewTransactions(User $user, ?Wallet $wallet = null): bool
+    {
+        if ($wallet === null) {
+            return $user->can('wallets.view');
+        }
+
+        return (string) $user->id === (string) $wallet->user_id || $user->can('wallets.view');
+    }
+}

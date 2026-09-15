@@ -1,0 +1,95 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Payment\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Modules\Auth\Domain\Models\User;
+use Modules\Payment\Domain\Enums\PaymentStatus;
+use Modules\Shared\Domain\Support\Money;
+use Modules\Shared\Infrastructure\Traits\Auditable;
+use Modules\Shared\Infrastructure\Traits\BelongsToTenant;
+use Modules\Shared\Infrastructure\Traits\HasUuid;
+
+/**
+ * @property string $id
+ * @property string $tenant_id
+ * @property string|null $user_id
+ * @property string $gateway
+ * @property string|null $gateway_reference
+ * @property PaymentStatus $status
+ * @property int $amount
+ * @property int $refunded_amount
+ * @property string $currency
+ * @property array|null $metadata
+ * @property string|null $description
+ * @property Carbon|null $paid_at
+ * @property Carbon|null $created_at
+ * @property User|null $user
+ */
+class Payment extends Model
+{
+    use Auditable;
+    use BelongsToTenant;
+    use HasUuid;
+
+    protected $fillable = [
+        'tenant_id',
+        'user_id',
+        'gateway',
+        'gateway_reference',
+        'amount',            // minor units
+        'refunded_amount',   // minor units
+        'currency',
+        'status',
+        'description',
+        'metadata',
+        'paid_at',
+
+        // Conversion Snapshots
+        'source_currency',
+        'target_currency',
+        'converted_amount',
+        'converted_amount_decimal',
+        'exchange_rate',
+        'rate_provider',
+        'rate_provider_version',
+        'conversion_direction',
+        'rounding_mode_used',
+        'conversion_algorithm_version',
+        'rate_captured_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => PaymentStatus::class,
+            'metadata' => 'array',
+            'amount' => 'integer',
+            'refunded_amount' => 'integer',
+            'paid_at' => 'datetime',
+            'converted_amount' => 'integer',
+            'converted_amount_decimal' => 'decimal:4',
+            'exchange_rate' => 'decimal:14',
+            'rate_captured_at' => 'datetime',
+        ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function money(): Money
+    {
+        return Money::of($this->amount, $this->currency);
+    }
+
+    public function remainingRefundable(): Money
+    {
+        return Money::of(max(0, $this->amount - $this->refunded_amount), $this->currency);
+    }
+}

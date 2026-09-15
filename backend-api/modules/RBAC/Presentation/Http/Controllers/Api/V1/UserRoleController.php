@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\RBAC\Presentation\Http\Controllers\Api\V1;
+
+use Illuminate\Database\Query\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Modules\Auth\Domain\Models\User;
+use Modules\RBAC\Infrastructure\Actions\SyncUserRolesAction;
+use Modules\RBAC\Presentation\Http\Resources\RoleResource;
+use Modules\Shared\Infrastructure\Tenancy\TenantManager;
+use Modules\Shared\Presentation\Http\Controllers\ApiController;
+
+class UserRoleController extends ApiController
+{
+    public function __construct(private readonly SyncUserRolesAction $syncAction) {}
+
+    public function index(User $user): JsonResponse
+    {
+        $this->authorize('rbac.roles.view');
+
+        return $this->respond(RoleResource::collection($user->roles));
+    }
+
+    public function store(Request $request, User $user): JsonResponse
+    {
+        $this->authorize('rbac.roles.manage');
+
+        $roles = $this->validatedRoles($request);
+        $this->syncAction->execute($user, $roles, 'add');
+
+        return $this->respond(RoleResource::collection($user->refresh()->roles), __('rbac.roles_added'));
+    }
+
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $this->authorize('rbac.roles.manage');
+
+        $roles = $this->validatedRoles($request);
+        $this->syncAction->execute($user, $roles, 'replace');
+
+        return $this->respond(RoleResource::collection($user->refresh()->roles), __('rbac.roles_synced'));
+    }
+
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $this->authorize('rbac.roles.manage');
+
+        $roles = $this->validatedRoles($request);
+        $this->syncAction->execute($user, $roles, 'remove');
+
+        return $this->respond(null, __('rbac.roles_removed'));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function validatedRoles(Request $request): array
+    {
+        $validated = $request->validate([
+            'roles' => ['required', 'array'],
+            'roles.*' => ['string', Rule::exists('roles', 'name')->where(function (Builder $query) {
+                $query->where('tenant_id', app(TenantManager::class)->id())->orWhereNull('tenant_id');
+            })],
+        ]);
+        $validatedArray = is_array($validated) ? $validated : [];
+        $rolesVal = $validatedArray['roles'] ?? [];
+
+        return is_array($rolesVal) ? array_filter($rolesVal, 'is_string') : [];
+    }
+}

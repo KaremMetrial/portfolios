@@ -1,0 +1,170 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Services;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Modules\Auth\Domain\Events\SocialIdentityLinked;
+use Modules\Auth\Domain\Events\SocialIdentityUnlinked;
+use Modules\Auth\Domain\Events\UserLoggedInByProvider;
+use Modules\Auth\Domain\Models\User;
+use Modules\Auth\Domain\Models\UserSocialIdentity;
+use Modules\Shared\Application\Exceptions\DomainException;
+use Modules\Shared\Domain\Contracts\AuditRecorder;
+
+class SocialIdentityService
+{
+    public function __construct(
+        private readonly AuditRecorder $audit,
+        private readonly AuthMethodGovernanceService $governance
+    ) {}
+
+    /**
+     * @return array{user: User, token: string, is_new: bool}
+     */
+    public function loginOrRegister(string $provider, array $socialUser, ?string $tenantId = null, string $deviceName = 'social'): array
+    {
+        $this->governance->checkMethodEnabled('social');
+
+        return DB::transaction(function () use ($provider, $socialUser, $tenantId, $deviceName) {
+            $idVal = $socialUser['id'] ?? '';
+            $idStr = is_scalar($idVal) ? (string) $idVal : '';
+
+            $expiresInVal = $socialUser['expiresIn'] ?? null;
+            $expiresInInt = is_numeric($expiresInVal) ? (int) $expiresInVal : null;
+            $expiresAt = $expiresInInt !== null ? now()->addSeconds($expiresInInt) : null;
+
+            /** @var UserSocialIdentity|null $identity */
+            $identity = UserSocialIdentity::query()
+                ->where('provider', $provider)
+                ->where('provider_user_id', $idStr)
+                ->first();
+
+            $isNew = false;
+            $user = null;
+
+            if ($identity) {
+                /** @var User|null $user */
+                $user = User::query()->withoutGlobalScopes()->find($identity->user_id);
+                if ($user && $tenantId !== null && (string) $user->tenant_id !== (string) $tenantId) {
+                    throw new DomainException(__('auth.social.tenant_mismatch'), errorCode: 'social_tenant_mismatch');
+                }
+                $identity->update([
+                    'provider_email' => $socialUser['email'] ?? null,
+                    'access_token' => $socialUser['token'] ?? null,
+                    'refresh_token' => $socialUser['refreshToken'] ?? null,
+                    'expires_at' => $expiresAt,
+                ]);
+            } else {
+                // Check if user exists by email
+                $email = $socialUser['email'] ?? null;
+                if ($email) {
+                    $user = User::query()->withoutGlobalScopes()->where('email', $email)->first();
+                    if ($user && $tenantId !== null && (string) $user->tenant_id !== (string) $tenantId) {
+                        throw new DomainException(__('auth.social.tenant_mismatch'), errorCode: 'social_tenant_mismatch');
+                    }
+                }
+
+                if (! $user instanceof User) {
+                    $isNew = true;
+                    $user = User::query()->create([
+                        'tenant_id' => $tenantId,
+                        'name' => $socialUser['name'] ?? 'User',
+                        'email' => $email ?? "{$provider}_".Str::random(10).'@example.com',
+                        'password' => null,
+                        'email_verified_at' => now(),
+                    ]);
+                }
+
+                UserSocialIdentity::query()->create([
+                    'user_id' => $user->id,
+                    'provider' => $provider,
+                    'provider_user_id' => $idStr,
+                    'provider_email' => $email,
+                    'access_token' => $socialUser['token'] ?? null,
+                    'refresh_token' => $socialUser['refreshToken'] ?? null,
+                    'expires_at' => $expiresAt,
+                ]);
+
+                event(new SocialIdentityLinked($user, $provider));
+            }
+
+            if (! $user instanceof User) {
+                throw new DomainException(__('auth.social.failed', ['default' => 'Social login failed.']), errorCode: 'social_login_failed');
+            }
+
+            $abilities = $user->hasPermissionTo('admin.super')
+                ? ['*']
+                : $user->getPermissionsViaRoles()->pluck('name')->toArray();
+
+            if (empty($abilities)) {
+                $abilities = [];
+            }
+
+            $token = $user->createToken($deviceName, $abilities)->plainTextToken;
+
+            $this->audit->log('auth.social_login', $user, ['provider' => $provider]);
+
+            event(new UserLoggedInByProvider($user, $provider));
+
+            return ['user' => $user, 'token' => $token, 'is_new' => $isNew];
+        });
+    }
+
+    public function linkIdentity(User $user, string $provider, array $socialUser): UserSocialIdentity
+    {
+        $idVal = $socialUser['id'] ?? '';
+        $idStr = is_scalar($idVal) ? (string) $idVal : '';
+
+        $existing = UserSocialIdentity::query()
+            ->where('provider', $provider)
+            ->where('provider_user_id', $idStr)
+            ->first();
+
+        if ($existing) {
+            if ($existing->user_id === $user->id) {
+                return $existing;
+            }
+            throw new DomainException(__('auth.social.conflict'), errorCode: 'social_identity_conflict');
+        }
+
+        $expiresInVal = $socialUser['expiresIn'] ?? null;
+        $expiresInInt = is_numeric($expiresInVal) ? (int) $expiresInVal : null;
+        $expiresAt = $expiresInInt !== null ? now()->addSeconds($expiresInInt) : null;
+
+        $identity = UserSocialIdentity::query()->create([
+            'user_id' => $user->id,
+            'provider' => $provider,
+            'provider_user_id' => $idStr,
+            'provider_email' => $socialUser['email'] ?? null,
+            'access_token' => $socialUser['token'] ?? null,
+            'refresh_token' => $socialUser['refreshToken'] ?? null,
+            'expires_at' => $expiresAt,
+        ]);
+
+        $this->audit->log('auth.social_linked', $user, ['provider' => $provider]);
+
+        event(new SocialIdentityLinked($user, $provider));
+
+        return $identity;
+    }
+
+    public function unlinkIdentity(User $user, string $provider): void
+    {
+        if (! $user->canUnlinkIdentity()) {
+            throw new DomainException(
+                __('auth.social.cannot_unlink_only'),
+                errorCode: 'cannot_unlink_only_identity'
+            );
+        }
+
+        $deleted = $user->socialIdentities()->where('provider', $provider)->delete();
+
+        if ($deleted) {
+            $this->audit->log('auth.social_unlinked', $user, ['provider' => $provider]);
+            event(new SocialIdentityUnlinked($user, $provider));
+        }
+    }
+}

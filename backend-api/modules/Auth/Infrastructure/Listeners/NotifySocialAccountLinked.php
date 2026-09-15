@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Infrastructure\Listeners;
+
+use Modules\Auth\Domain\Events\SocialIdentityLinked;
+use Modules\Auth\Infrastructure\Notifications\LoginAlertNotification;
+
+class NotifySocialAccountLinked
+{
+    public function handle(SocialIdentityLinked $event): void
+    {
+        $user = $event->user;
+
+        $ip = request()->ip() ?: '127.0.0.1';
+        $agent = request()->userAgent() ?: 'Unknown Device';
+        $time = now()->toDateTimeString();
+
+        // Notify user about new OAuth link
+        $user->notify(new LoginAlertNotification($ip, "Linked {$event->provider} on {$agent}", $time));
+    }
+}

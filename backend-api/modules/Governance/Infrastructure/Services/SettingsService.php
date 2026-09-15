@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Governance\Infrastructure\Services;
+
+use Illuminate\Support\Facades\Cache;
+use Modules\Governance\Domain\Models\Setting;
+use Modules\Shared\Infrastructure\Tenancy\TenantManager;
+
+/**
+ * DB-backed, cached runtime settings — the knobs ops/admins can turn without
+ * a deploy (commission rates, support phone, maintenance flags, ...).
+ */
+class SettingsService
+{
+    private const CACHE_PREFIX = 'settings:';
+
+    private const TTL = 3600;
+
+    protected function cacheKey(string $key): string
+    {
+        $tenantId = app(TenantManager::class)->id() ?: 'global';
+
+        return self::CACHE_PREFIX."{$tenantId}:{$key}";
+    }
+
+    public function get(string $key, mixed $default = null): mixed
+    {
+        $cacheKey = $this->cacheKey($key);
+
+        $cached = Cache::remember(
+            $cacheKey,
+            self::TTL,
+            function () use ($key) {
+                $setting = Setting::query()->where('key', $key)->first();
+
+                return $setting
+                    ? ['exists' => true, 'value' => $setting->value['data']]
+                    : ['exists' => false, 'value' => null];
+            },
+        );
+
+        return $cached['exists'] ? $cached['value'] : $default;
+    }
+
+    public function set(string $key, mixed $value, ?string $description = null): void
+    {
+        Setting::query()->updateOrCreate(
+            ['key' => $key],
+            ['value' => ['data' => $value], 'description' => $description],
+        );
+
+        Cache::forget($this->cacheKey($key));
+    }
+
+    public function forget(string $key): void
+    {
+        Setting::query()->where('key', $key)->delete();
+        Cache::forget($this->cacheKey($key));
+    }
+
+    public function all(): array
+    {
+        return Setting::query()
+            ->get()
+            ->mapWithKeys(fn (Setting $s) => [$s->key => $s->value['data'] ?? null])
+            ->all();
+    }
+}

@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Territory\Infrastructure\Services;
+
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
+use Modules\Territory\Infrastructure\Persistence\Filters\TerritoryFilter;
+use Modules\Territory\Infrastructure\Persistence\Repositories\GovernorateRepository;
+
+class GovernorateService
+{
+    private const CACHE_TTL = 86400;
+
+    public function __construct(private readonly GovernorateRepository $repository) {}
+
+    public function getGovernorates(string $countryId, ?TerritoryFilter $filter = null): Collection
+    {
+        if ($filter !== null) {
+            return $this->repository->filter($filter)->where('country_id', $countryId)->get();
+        }
+
+        return Cache::remember("territory:governorates:{$countryId}", self::CACHE_TTL, function () use ($countryId) {
+            return $this->repository->getActiveByCountry($countryId);
+        });
+    }
+
+    public function clearCache(string $countryId): void
+    {
+        Cache::forget("territory:governorates:{$countryId}");
+    }
+}

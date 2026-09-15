@@ -1,0 +1,257 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Presentation\Http\Controllers\Api\V1;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Modules\Auth\Domain\Events\UserSessionRevoked;
+use Modules\Auth\Domain\Models\User;
+use Modules\Auth\Domain\Models\UserSession;
+use Modules\Auth\Infrastructure\Pipelines\AuthContext;
+use Modules\Auth\Infrastructure\Pipelines\AuthPipeline;
+use Modules\Auth\Infrastructure\Services\AuthMethodGovernanceService;
+use Modules\Auth\Infrastructure\Services\IssueApiToken;
+use Modules\Auth\Infrastructure\Services\MfaService;
+use Modules\Auth\Infrastructure\Services\PasswordResetService;
+use Modules\Auth\Infrastructure\Services\RegisterUser;
+use Modules\Auth\Infrastructure\Strategies\PasswordAuthStrategy;
+use Modules\Auth\Presentation\Http\Requests\ConfirmMfaRequest;
+use Modules\Auth\Presentation\Http\Requests\DisableMfaRequest;
+use Modules\Auth\Presentation\Http\Requests\ForgotPasswordRequest;
+use Modules\Auth\Presentation\Http\Requests\LoginRequest;
+use Modules\Auth\Presentation\Http\Requests\RegisterRequest;
+use Modules\Auth\Presentation\Http\Requests\ResetPasswordRequest;
+use Modules\Auth\Presentation\Http\Requests\UpdateFcmTokenRequest;
+use Modules\Auth\Presentation\Http\Resources\UserResource;
+use Modules\Shared\Application\Exceptions\ApiException;
+use Modules\Shared\Presentation\Http\Controllers\ApiController;
+
+class AuthController extends ApiController
+{
+    public function __construct(
+        private readonly AuthMethodGovernanceService $governance
+    ) {}
+
+    public function register(RegisterRequest $request, RegisterUser $register, IssueApiToken $issueToken): JsonResponse
+    {
+        $this->governance->checkMethodEnabled('password');
+
+        // Tenant ID comes from the validated request body only — never from a raw
+        // client-controlled header, which would allow registering into any tenant.
+        $tenantIdVal = $request->input('tenant_id');
+        $tenantId = is_string($tenantIdVal) ? $tenantIdVal : null;
+        $user = $register($request->validated(), $tenantId);
+
+        ['token' => $token] = $issueToken($user->email, $request->string('password')->value());
+
+        if ($request->filled('device_token')) {
+            $user->updateFcmDeviceToken(
+                $request->string('device_token')->value(),
+                $request->string('device_id')->value() ?: null,
+                $request->string('device_name')->value() ?: null,
+                $request->string('platform')->value() ?: null
+            );
+        }
+
+        $this->recordSession($user, $request);
+
+        return $this->respondCreated([
+            'user' => (new UserResource($user->load('roles')))->resolve(),
+            'token' => $token,
+        ]);
+    }
+
+    public function login(
+        LoginRequest $request,
+        PasswordAuthStrategy $strategy,
+        AuthPipeline $pipeline
+    ): JsonResponse {
+        $this->governance->checkMethodEnabled('password');
+
+        // Tenant resolution happens in ResolveTenant middleware from the authenticated
+        // user's own tenant_id — do NOT trust a client-supplied header here.
+        $user = $strategy->authenticate([
+            'email' => $request->string('email')->value(),
+            'password' => $request->string('password')->value(),
+        ]);
+
+        $context = new AuthContext(
+            $request,
+            $request->string('device_name', 'api')->value(),
+            $user->tenant_id ?? null,
+            'web'
+        );
+        $context->setUser($user);
+
+        $context = $pipeline->execute($context);
+
+        return $this->respond($context->payload);
+    }
+
+    public function verifyMfa(Request $request, IssueApiToken $issueToken, MfaService $mfa, PasswordAuthStrategy $strategy): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'code' => ['required', 'string'],
+        ]);
+
+        $email = $request->string('email')->value();
+        $password = $request->string('password')->value();
+        $code = $request->string('code')->value();
+
+        // Route through the same strategy as /auth/login so both entry
+        // points share one login-attempts:{email} lockout counter — this
+        // endpoint previously re-checked the password independently and
+        // never touched that limiter, letting an attacker brute-force a
+        // password here at the flat per-IP throttle:auth rate instead of
+        // the per-account lockout enforced everywhere else.
+        $user = $strategy->authenticate(['email' => $email, 'password' => $password]);
+
+        if (! $mfa->verify($user, $code)) {
+            throw new ApiException(__('auth.mfa.invalid_code'), status: 401, errorCode: 'invalid_mfa_code');
+        }
+
+        ['user' => $user, 'token' => $token] = $issueToken(
+            $email,
+            $password,
+            $request->string('device_name', 'api')->value(),
+        );
+
+        if ($request->filled('device_token')) {
+            $user->updateFcmDeviceToken(
+                $request->string('device_token')->value(),
+                $request->string('device_id')->value() ?: null,
+                $request->string('device_name')->value() ?: null,
+                $request->string('platform')->value() ?: null
+            );
+        }
+
+        $this->recordSession($user, $request);
+
+        return $this->respond([
+            'user' => (new UserResource($user->load('roles')))->resolve(),
+            'token' => $token,
+        ]);
+    }
+
+    public function sessions(Request $request): JsonResponse
+    {
+        return $this->respond([
+            'sessions' => $this->getAuthenticatedUser($request)->sessions()->orderByDesc('last_activity_at')->get(),
+        ]);
+    }
+
+    public function revokeSession(Request $request, string $id): JsonResponse
+    {
+        /** @var UserSession $session */
+        $session = $this->getAuthenticatedUser($request)->sessions()->where('id', $id)->firstOrFail();
+        $tokenId = $session->personal_access_token_id;
+        $session->revoke();
+        event(new UserSessionRevoked($this->getAuthenticatedUser($request), $id, $tokenId));
+
+        return $this->respond(message: __('auth.session.revoked'));
+    }
+
+    public function enableMfa(Request $request, MfaService $mfa): JsonResponse
+    {
+        return $this->respond($mfa->enable($this->getAuthenticatedUser($request)));
+    }
+
+    public function confirmMfa(ConfirmMfaRequest $request, MfaService $mfa): JsonResponse
+    {
+        if (! $mfa->confirm($this->getAuthenticatedUser($request), $request->string('code')->value())) {
+            throw new ApiException(__('auth.mfa.invalid_code'), status: 422, errorCode: 'invalid_mfa_code');
+        }
+
+        return $this->respond(message: __('auth.mfa.confirmed'));
+    }
+
+    public function disableMfa(DisableMfaRequest $request, MfaService $mfa): JsonResponse
+    {
+        $mfa->disable($this->getAuthenticatedUser($request), $request->string('password')->value());
+
+        return $this->respond(message: __('auth.mfa.disabled'));
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request, PasswordResetService $resetService): JsonResponse
+    {
+        $resetService->requestReset($request->string('email')->value());
+
+        return $this->respond(message: __('auth.recovery.sent'));
+    }
+
+    public function resetPassword(ResetPasswordRequest $request, PasswordResetService $resetService): JsonResponse
+    {
+        $user = $resetService->reset(
+            $request->string('email')->value(),
+            $request->string('token')->value(),
+            $request->string('password')->value()
+        );
+
+        return $this->respond(message: __('auth.recovery.reset_success'));
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        return $this->respond(new UserResource($this->getAuthenticatedUser($request)->load('roles')));
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $user = $this->getAuthenticatedUser($request);
+        $token = $user->currentAccessToken();
+        if ($token && method_exists($token, 'delete')) {
+            $session = $user->sessions()->where('personal_access_token_id', $token->getKey())->first();
+            $tokenId = (string) $token->getKey();
+            $sessionId = (string) ($session?->getKey() ?? $tokenId);
+            $token->delete();
+            event(new UserSessionRevoked($user, $sessionId, $tokenId));
+        }
+
+        if ($tokenVal = $request->string('device_token')->value()) {
+            $user->fcmDeviceTokens()->where('device_token', $tokenVal)->delete();
+        }
+
+        return $this->respondNoContent();
+    }
+
+    public function updateFcmToken(UpdateFcmTokenRequest $request): JsonResponse
+    {
+        $this->getAuthenticatedUser($request)->updateFcmDeviceToken(
+            $request->string('device_token')->value(),
+            $request->string('device_id')->value() ?: null,
+            $request->string('device_name')->value() ?: null,
+            $request->string('platform')->value() ?: null
+        );
+
+        return $this->respond(message: __('auth.fcm_token_updated', ['default' => 'FCM device token updated successfully.']));
+    }
+
+    private function getAuthenticatedUser(Request $request): User
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            throw new ApiException(__('auth.unauthorized', ['default' => 'Unauthorized']), status: 401, errorCode: 'unauthorized');
+        }
+
+        return $user;
+    }
+
+    private function recordSession(User $user, Request $request): void
+    {
+        if ($tokenModel = $user->tokens()->latest()->first()) {
+            $user->sessions()->updateOrCreate(
+                ['personal_access_token_id' => $tokenModel->id],
+                [
+                    'ip_address' => $request->ip() ?: '127.0.0.1',
+                    'user_agent' => $request->userAgent() ?: 'Unknown',
+                    'device_fingerprint' => $request->string('device_fingerprint')->value() ?: null,
+                    'last_activity_at' => now(),
+                ]
+            );
+        }
+    }
+}

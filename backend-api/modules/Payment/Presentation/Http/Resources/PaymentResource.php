@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Payment\Presentation\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Modules\Payment\Domain\Models\Payment;
+use Modules\Shared\Domain\Support\Money;
+
+/**
+ * @property Payment $resource
+ *
+ * @mixin Payment
+ */
+class PaymentResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'gateway' => $this->gateway,
+            'gateway_reference' => $this->gateway_reference,
+            'amount' => Money::of($this->amount, $this->currency),
+            'refunded_amount' => $this->when($this->refunded_amount > 0, fn () => Money::of($this->refunded_amount, $this->currency)),
+            'status' => $this->status,
+            'description' => $this->description,
+            'reference_code' => data_get($this->metadata, 'reference_code'),
+            'paid_at' => $this->paid_at instanceof \DateTimeInterface ? $this->paid_at->toIso8601String() : $this->paid_at,
+            'created_at' => $this->created_at instanceof \DateTimeInterface ? $this->created_at->toIso8601String() : $this->created_at,
+        ];
+    }
+}
