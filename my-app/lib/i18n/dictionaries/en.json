@@ -37,7 +37,44 @@
   },
   "home": {
     "role": "Backend Software Engineer",
-    "intro": "PHP, Laravel, and infrastructure that holds up under real traffic: payments, ledgers, queues, and real-time systems."
+    "intro": "PHP, Laravel, and infrastructure that holds up under real traffic: payments, ledgers, queues, and real-time systems.",
+    "specialties": ["APIs", "Real-time", "Payments", "Scalable systems"],
+    "viewWork": "View work",
+    "downloadCv": "Download CV",
+    "contact": "Contact",
+    "liveStrip": {
+      "operational": "operational",
+      "unavailable": "status unavailable"
+    },
+    "proofStats": {
+      "eyebrow": "Track record",
+      "title": "Proven by shipped platforms",
+      "platforms": "Platforms shipped",
+      "companies": "Companies worked with",
+      "apps": "Public apps",
+      "experience": "Experience since"
+    },
+    "featuredProjects": {
+      "eyebrow": "Featured work",
+      "title": "Projects that delivered results",
+      "viewAll": "View all projects"
+    },
+    "experience": {
+      "eyebrow": "Experience",
+      "title": "Where I've built",
+      "present": "Present",
+      "viewAll": "View full timeline"
+    },
+    "skills": {
+      "eyebrow": "Skills",
+      "title": "Technical expertise"
+    },
+    "cta": {
+      "eyebrow": "Let's talk",
+      "title": "Engineering a Smarter Tomorrow",
+      "description": "Ready to build something that holds up under real traffic? Let's connect.",
+      "contact": "Get in touch"
+    }
   },
   "notFound": {
     "title": "Page not found",

@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "snapshot": "tsx scripts/snapshot.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "0.9.0",
@@ -45,6 +46,7 @@
     "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "5.0.1"
   }
