@@ -1,10 +1,13 @@
 import Link from "next/link";
 
-import { MetrialMark } from "@/components/brand/metrial-mark";
+import { MetrialWordmark } from "@/components/brand/metrial-wordmark";
 import { localizedPath, type Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 
+import { HeaderShell } from "./header-shell";
 import { LanguageSwitch } from "./language-switch";
+import { MobileNav } from "./mobile-nav";
+import { NavLink } from "./nav-link";
 
 type HeaderProps = {
   lang: Locale;
@@ -14,58 +17,71 @@ type HeaderProps = {
 };
 
 /**
- * Header shell (FE-0). FR-FE-70 adds scroll condensing, the mobile sheet,
- * the ⌘K hint and Under the Hood in FE-1 and FE-8.
+ * Header (FR-FE-70): brand lockup, centred navigation with the gold active
+ * underline, language switch and the gold "Let's talk" pill — the layout of
+ * the brand comps. Condensing on scroll lives in <HeaderShell>.
  */
 export function Header({ lang, dict, otherDict }: HeaderProps) {
   const links = [
-    { href: "/projects", label: dict.nav.projects },
-    { href: "/experience", label: dict.nav.experience },
-    { href: "/about", label: dict.nav.about },
-    { href: "/contact", label: dict.nav.contact },
+    { href: localizedPath("/", lang), label: dict.nav.home },
+    { href: localizedPath("/projects", lang), label: dict.nav.projects },
+    { href: localizedPath("/experience", lang), label: dict.nav.experience },
+    { href: localizedPath("/about", lang), label: dict.nav.about },
+    { href: localizedPath("/contact", lang), label: dict.nav.contact },
   ];
 
+  const contactHref = localizedPath("/contact", lang);
+
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-charcoal/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
+    <HeaderShell>
+      <div className="shell relative flex h-18 items-center gap-6">
         <Link
           href={localizedPath("/", lang)}
-          className="flex items-center gap-2 font-display text-sm font-semibold tracking-[0.2em] uppercase"
+          aria-label={dict.meta.siteName}
+          className="shrink-0 rounded-sm"
         >
-          <MetrialMark className="h-6 w-auto" />
-          <span>{dict.meta.siteName}</span>
+          <MetrialWordmark />
         </Link>
 
-        <nav aria-label={dict.nav.label} className="ms-auto hidden md:block">
-          <ul className="flex items-center gap-6 text-sm text-offwhite/80">
+        <nav
+          aria-label={dict.nav.label}
+          className="ms-auto hidden md:block lg:absolute lg:left-1/2 lg:ms-0 lg:-translate-x-1/2"
+        >
+          <ul className="flex items-center gap-7">
             {links.map((link) => (
               <li key={link.href}>
-                <Link
-                  href={localizedPath(link.href, lang)}
-                  className="transition-colors hover:text-gold"
-                >
-                  {link.label}
-                </Link>
+                <NavLink href={link.href}>{link.label}</NavLink>
               </li>
             ))}
           </ul>
         </nav>
 
-        <div className="ms-auto flex items-center gap-3 md:ms-0">
+        <div className="ms-auto flex items-center gap-3">
           <LanguageSwitch
             lang={lang}
             label={dict.language.label}
             switchLabel={otherDict.language.switch}
           />
+
           <Link
-            href="/cv"
-            prefetch={false}
-            className="rounded-md bg-gold px-3 py-1.5 text-sm font-semibold text-charcoal transition-colors hover:bg-gold-light"
+            href={contactHref}
+            className="hidden h-10 items-center gap-2 rounded-md bg-gold px-5 font-display text-sm font-semibold text-charcoal transition-colors hover:bg-gold-light active:bg-gold-dark sm:inline-flex"
           >
-            {dict.nav.downloadCv}
+            {dict.nav.letsTalk}
+            <span aria-hidden="true" className="rtl:rotate-180">
+              →
+            </span>
           </Link>
+
+          <MobileNav
+            links={links}
+            ctaHref={contactHref}
+            ctaLabel={dict.nav.letsTalk}
+            openLabel={dict.header.openMenu}
+            closeLabel={dict.header.closeMenu}
+          />
         </div>
       </div>
-    </header>
+    </HeaderShell>
   );
 }

@@ -4,10 +4,12 @@
 @layer base {
   html {
     color-scheme: dark;
-    background-color: var(--color-charcoal);
+    background-color: var(--color-ink);
     color: var(--color-offwhite);
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--header-h);
   }
 
   html[lang="ar"] {
@@ -18,8 +20,17 @@
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+    background-color: var(--color-ink);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Display face: tight, confident headings like the brand comps. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
   ::selection {
@@ -32,7 +43,27 @@
     outline-offset: 2px;
   }
 
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gold-dark);
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
     *,
     *::before,
     *::after {
@@ -41,5 +72,93 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@layer components {
+  /* Page gutter + max width shared by every section (comps: 1200px grid). */
+  .shell {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 75rem;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Small letterspaced uppercase label above a heading (comps use it
+   * everywhere: "OUR SERVICES", "FEATURED WORK", "BUILD · SOLVE · SCALE"). */
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+  }
+
+  /* Hairline between banded sections; fades at both ends. */
+  .rule-fade {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-line),
+      transparent
+    );
+  }
+
+  /* Faint engineering grid used behind the hero and CTA band. */
+  .grid-veil {
+    background-image:
+      linear-gradient(to right, rgb(198 168 106 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(198 168 106 / 0.05) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(70% 60% at 50% 40%, #000 0%, transparent 100%);
+  }
+
+  /* Warm ambient light, as in the comps' hero and CTA panels. */
+  .gold-glow {
+    background: radial-gradient(
+      60% 55% at 70% 20%,
+      rgb(198 168 106 / 0.14) 0%,
+      transparent 70%
+    );
+  }
+
+  /* Gold gradient text for the accented half of a display heading. */
+  .text-gold-gradient {
+    background: linear-gradient(
+      100deg,
+      var(--color-gold-light),
+      var(--color-gold) 45%,
+      var(--color-gold-dark)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Vertical letterspaced keyword rail (comps: IDEAS / CODE / SYSTEMS). */
+  .rail {
+    writing-mode: vertical-rl;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+  }
+
+  /* Arabic joins its letters, so the brand's wide Latin tracking and the
+   * vertical rail are relaxed rather than carried over. */
+  html[lang="ar"] .eyebrow {
+    letter-spacing: 0.08em;
+  }
+
+  html[lang="ar"] .rail {
+    writing-mode: horizontal-tb;
+    letter-spacing: 0.08em;
   }
 }

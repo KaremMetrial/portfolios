@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 
-import { env } from "@/lib/env";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import {
@@ -9,21 +8,41 @@ import {
   getSkills,
   getProjects,
   getStats,
+  type SkillGroup,
 } from "@/lib/api";
+
+import { hasTechLogo } from "@/components/brand/tech-logo";
+import type { TechItem } from "@/components/sections/tech-strip";
 
 import {
   Hero,
-  LiveStrip,
   ProofStats,
+  TechStrip,
   FeaturedProjects,
   ExperienceSnapshot,
   SkillsSection,
   ClosingCTA,
 } from "@/components/sections";
 
-export default async function HomePage({
-  params,
-}: PageProps<"/[lang]">) {
+/**
+ * The stack that actually appears in the work: technologies with a brand mark
+ * first (they carry the strip visually), then the rest by project count.
+ */
+function topTechnologies(groups: SkillGroup[], limit = 9): TechItem[] {
+  return groups
+    .flatMap((group) => group.skills)
+    .map((skill) => ({
+      key: skill.key,
+      name: skill.name,
+      hasLogo: hasTechLogo(skill.key),
+      count: skill.project_count,
+    }))
+    .sort((a, b) => Number(b.hasLogo) - Number(a.hasLogo) || b.count - a.count)
+    .slice(0, limit)
+    .map(({ key, name, hasLogo }) => ({ key, name, hasLogo }));
+}
+
+export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
 
@@ -47,8 +66,7 @@ export default async function HomePage({
     return Math.max(
       0,
       Math.floor(
-        (now.getTime() - since.getTime()) /
-          (365.25 * 24 * 60 * 60 * 1000),
+        (now.getTime() - since.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
       ),
     );
   })();
@@ -58,19 +76,15 @@ export default async function HomePage({
       <Hero
         profile={profile}
         dict={{
+          eyebrow: homeDict.eyebrow,
           role: homeDict.role,
           specialties: homeDict.specialties,
+          rail: homeDict.rail,
           viewWork: homeDict.viewWork,
-          downloadCv: homeDict.downloadCv,
+          letsTalk: homeDict.letsTalk,
           contact: homeDict.contact,
         }}
         lang={lang as Locale}
-      />
-
-      <LiveStrip
-        apiUrl={env.NEXT_PUBLIC_API_URL}
-        operational={homeDict.liveStrip.operational}
-        unavailable={homeDict.liveStrip.unavailable}
       />
 
       <ProofStats
@@ -83,7 +97,13 @@ export default async function HomePage({
           companies: homeDict.proofStats.companies,
           apps: homeDict.proofStats.apps,
           experience: homeDict.proofStats.experience,
+          years: homeDict.proofStats.years,
         }}
+      />
+
+      <TechStrip
+        items={topTechnologies(skills)}
+        label={homeDict.techStrip.label}
       />
 
       <FeaturedProjects
@@ -91,7 +111,10 @@ export default async function HomePage({
         dict={{
           eyebrow: homeDict.featuredProjects.eyebrow,
           title: homeDict.featuredProjects.title,
+          description: homeDict.featuredProjects.description,
           viewAll: homeDict.featuredProjects.viewAll,
+          featured: homeDict.featuredProjects.featured,
+          viewProject: homeDict.featuredProjects.viewProject,
         }}
         lang={lang as Locale}
       />
@@ -101,6 +124,7 @@ export default async function HomePage({
         dict={{
           eyebrow: homeDict.experience.eyebrow,
           title: homeDict.experience.title,
+          description: homeDict.experience.description,
           present: homeDict.experience.present,
           viewAll: homeDict.experience.viewAll,
         }}
@@ -112,6 +136,7 @@ export default async function HomePage({
         dict={{
           eyebrow: homeDict.skills.eyebrow,
           title: homeDict.skills.title,
+          description: homeDict.skills.description,
         }}
       />
 
@@ -121,6 +146,8 @@ export default async function HomePage({
           title: homeDict.cta.title,
           description: homeDict.cta.description,
           contact: homeDict.cta.contact,
+          viewWork: homeDict.cta.viewWork,
+          rail: homeDict.cta.rail,
         }}
         lang={lang as Locale}
       />

@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { LanguageBanner } from "@/components/layout/language-banner";
 import { SkipLink } from "@/components/layout/skip-link";
+import { getProfile } from "@/lib/api";
 import { env } from "@/lib/env";
 import { fontVariables } from "@/lib/fonts";
 import { dir, isLocale, locales, type Locale } from "@/lib/i18n/config";
@@ -41,6 +42,7 @@ export default async function LangLayout({
   const other: Locale = lang === "ar" ? "en" : "ar";
   const dict = getDictionary(lang);
   const otherDict = getDictionary(other);
+  const profile = await getProfile(lang);
 
   return (
     <html lang={lang} dir={dir(lang)} className={fontVariables}>
@@ -56,7 +58,13 @@ export default async function LangLayout({
         <main id="content" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
-        <Footer dict={dict} />
+        <Footer
+          dict={dict}
+          lang={lang}
+          location={profile.location}
+          email={profile.email}
+          socialLinks={profile.social_links}
+        />
       </body>
     </html>
   );

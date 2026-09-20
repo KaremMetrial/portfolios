@@ -12,7 +12,7 @@ export function Card({ className, interactive = false, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "relative rounded-[--radius-card] border border-line bg-surface",
+        "relative rounded-card border border-line bg-surface",
         "p-5 text-offwhite shadow-sm",
         interactive &&
           "transition-colors hover:border-gold/50 group-hover:border-gold/50",

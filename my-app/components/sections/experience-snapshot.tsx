@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Check, MapPin } from "lucide-react";
 
+import { ArrowLink } from "@/components/ui/arrow-link";
 import { Chip } from "@/components/ui/chip";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Reveal } from "@/components/motion/reveal";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
-import type { Locale } from "@/lib/i18n/config";
+import { localizedPath, type Locale } from "@/lib/i18n/config";
 import type { Experience } from "@/lib/api";
 
 type ExperienceSnapshotProps = {
@@ -12,6 +14,7 @@ type ExperienceSnapshotProps = {
   dict: {
     eyebrow: string;
     title: string;
+    description: string;
     present: string;
     viewAll: string;
   };
@@ -28,8 +31,9 @@ function formatDate(dateStr: string | null, presentLabel: string): string {
 }
 
 /**
- * Experience snapshot (PR-A6):
- * Latest 3 roles linking to the full timeline.
+ * Experience snapshot (PR-A6): a numbered rail — the comps' process pattern —
+ * with each role on its own card, so the highlights read as work shipped
+ * rather than a list of dates.
  */
 export function ExperienceSnapshot({
   experiences,
@@ -39,71 +43,97 @@ export function ExperienceSnapshot({
   const latest = experiences.slice(0, 3);
   if (latest.length === 0) return null;
 
-  const prefix = lang === "en" ? "" : `/${lang}`;
-
   return (
-    <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-      <Reveal>
-        <SectionHeader
-          eyebrow={dict.eyebrow}
-          title={dict.title}
-          className="mb-12"
-        />
-      </Reveal>
+    <section className="border-b border-line-soft bg-ink py-24">
+      <div className="shell">
+        <Reveal>
+          <SectionHeader
+            eyebrow={dict.eyebrow}
+            title={dict.title}
+            description={dict.description}
+            action={
+              <ArrowLink href={localizedPath("/experience", lang)} underline>
+                {dict.viewAll}
+              </ArrowLink>
+            }
+            className="mb-14"
+          />
+        </Reveal>
 
-      <Stagger className="flex flex-col gap-8">
-        {latest.map((exp) => (
-          <StaggerItem key={exp.id}>
-            <div className="relative border-s-2 border-line ps-6">
-              {/* Timeline dot */}
-              <span
-                aria-hidden="true"
-                className="absolute -start-1.5 top-1 h-3 w-3 rounded-full border-2 border-gold bg-charcoal"
-              />
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-                <h3 className="font-display text-lg font-bold text-offwhite">
-                  {exp.role}
-                </h3>
-                <span className="text-sm text-silver">{exp.company}</span>
+        <Stagger className="relative flex flex-col gap-6">
+          {/* Numbered rail, fading out past the last role. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-6 start-6 hidden w-px bg-gradient-to-b from-gold/50 via-line to-transparent sm:block"
+          />
+
+          {latest.map((exp, index) => (
+            <StaggerItem key={exp.id}>
+              <div className="relative flex items-start gap-6">
+                <span
+                  aria-hidden="true"
+                  className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-ink font-display text-sm font-bold text-gold shadow-card sm:inline-flex"
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+
+                <article className="group min-w-0 flex-1 rounded-card border border-line bg-surface p-6 shadow-card transition-colors hover:border-gold/45 sm:p-7">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 font-display text-[0.65rem] font-semibold tracking-[0.16em] text-gold uppercase">
+                      {formatDate(exp.started_on, dict.present)} –{" "}
+                      {formatDate(exp.ended_on, dict.present)}
+                    </span>
+                    {exp.location && (
+                      <span className="inline-flex items-center gap-1.5 font-display text-[0.65rem] font-medium tracking-[0.16em] text-silver/70 uppercase">
+                        <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                        {exp.location}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+                    <h3 className="font-display text-xl font-bold text-offwhite sm:text-2xl">
+                      {exp.role}
+                    </h3>
+                    <span className="font-display text-sm font-semibold tracking-wide text-gold">
+                      {exp.company}
+                    </span>
+                  </div>
+
+                  {exp.highlights.length > 0 && (
+                    <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                      {exp.highlights.slice(0, 4).map((highlight) => (
+                        <li
+                          key={highlight}
+                          className="flex gap-2.5 text-sm leading-relaxed text-silver"
+                        >
+                          <Check
+                            className="mt-0.5 h-4 w-4 shrink-0 text-gold/80"
+                            aria-hidden="true"
+                          />
+                          {highlight}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {exp.project_slugs.length > 0 && (
+                    <div className="mt-6 flex flex-wrap gap-1.5 border-t border-line-soft pt-5">
+                      {exp.project_slugs.map((slug) => (
+                        <Chip key={slug}>
+                          <Link href={localizedPath(`/projects/${slug}`, lang)}>
+                            {slug}
+                          </Link>
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                </article>
               </div>
-              <p className="mt-1 text-xs text-silver/70">
-                {formatDate(exp.started_on, dict.present)} –{" "}
-                {formatDate(exp.ended_on, dict.present)}
-                {exp.location && ` · ${exp.location}`}
-              </p>
-              {exp.highlights.length > 0 && (
-                <ul className="mt-3 flex flex-col gap-1">
-                  {exp.highlights.slice(0, 3).map((h, i) => (
-                    <li key={i} className="text-sm text-offwhite/80">
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {exp.project_slugs.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {exp.project_slugs.map((slug) => (
-                    <Chip key={slug}>
-                      <Link href={`${prefix}/projects/${slug}`}>{slug}</Link>
-                    </Chip>
-                  ))}
-                </div>
-              )}
-            </div>
-          </StaggerItem>
-        ))}
-      </Stagger>
-
-      <Reveal delay={0.2}>
-        <div className="mt-10 text-center">
-          <Link
-            href={`${prefix}/experience`}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-gold transition-colors hover:text-gold-light"
-          >
-            {dict.viewAll} →
-          </Link>
-        </div>
-      </Reveal>
+            </StaggerItem>
+          ))}
+        </Stagger>
+      </div>
     </section>
   );
 }

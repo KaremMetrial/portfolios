@@ -10,7 +10,11 @@ type StatProps = {
   "data-testid"?: string;
 };
 
-/** Large gold figure + silver label, animating into view (FR-FE-30, PR-A4). */
+/**
+ * Display figure + silver label, animating into view (FR-FE-30, PR-A4).
+ * Emits `<dt>` before `<dd>` for a valid description list and flips the
+ * visual order so the figure still reads first, as in the brand comps.
+ */
 export function Stat({
   label,
   value,
@@ -20,12 +24,17 @@ export function Stat({
   ...rest
 }: StatProps) {
   return (
-    <div className={cn("flex flex-col gap-1", className)} {...rest}>
-      <dd className="font-display text-3xl font-bold text-gold sm:text-4xl">
+    <div
+      className={cn("flex flex-col-reverse gap-1", className)}
+      {...rest}
+    >
+      <dt className="font-display text-xs font-medium tracking-[0.12em] text-silver uppercase">
+        {label}
+      </dt>
+      <dd className="font-display text-3xl font-bold text-offwhite sm:text-4xl">
         <CountUp to={value} format={format} label={label} />
-        {suffix && <span className="ms-0.5 text-2xl">{suffix}</span>}
+        {suffix && <span className="ms-0.5 text-2xl text-gold">{suffix}</span>}
       </dd>
-      <dt className="text-sm text-silver">{label}</dt>
     </div>
   );
 }

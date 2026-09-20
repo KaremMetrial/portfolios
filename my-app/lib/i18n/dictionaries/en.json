@@ -11,7 +11,8 @@
     "about": "About",
     "contact": "Contact",
     "label": "Main",
-    "downloadCv": "Download CV"
+    "downloadCv": "Download CV",
+    "letsTalk": "Let's talk"
   },
   "header": {
     "skipToContent": "Skip to content",
@@ -21,7 +22,18 @@
   "footer": {
     "tagline": "The portfolio is the proof.",
     "builtWith": "This site runs on the same Laravel API it demonstrates — inspect it live.",
-    "rights": "© {year} Kareem Sabry Elsayed (Karem Metrial). All rights reserved."
+    "rights": "© {year} Kareem Sabry Elsayed (Karem Metrial). All rights reserved.",
+    "subline": "Karem Sabry",
+    "quickLinks": "Quick links",
+    "focus": "Focus",
+    "focusItems": [
+      "Backend systems",
+      "APIs & integrations",
+      "Real-time & queues",
+      "Performance & data"
+    ],
+    "connect": "Connect",
+    "motto": "Build · Solve · Scale"
   },
   "language": {
     "label": "Language",
@@ -38,7 +50,12 @@
   "home": {
     "role": "Backend Software Engineer",
     "intro": "PHP, Laravel, and infrastructure that holds up under real traffic: payments, ledgers, queues, and real-time systems.",
-    "specialties": ["APIs", "Real-time", "Payments", "Scalable systems"],
+    "specialties": [
+      "APIs",
+      "Real-time",
+      "Payments",
+      "Scalable systems"
+    ],
     "viewWork": "View work",
     "downloadCv": "Download CV",
     "contact": "Contact",
@@ -52,28 +69,52 @@
       "platforms": "Platforms shipped",
       "companies": "Companies worked with",
       "apps": "Public apps",
-      "experience": "Experience since"
+      "experience": "Experience since",
+      "years": "Years experience"
     },
     "featuredProjects": {
       "eyebrow": "Featured work",
       "title": "Projects that delivered results",
-      "viewAll": "View all projects"
+      "viewAll": "View all projects",
+      "description": "A selection of platforms built end to end — payments, real-time delivery, marketplaces, and the infrastructure underneath them.",
+      "featured": "Featured",
+      "viewProject": "View project"
     },
     "experience": {
       "eyebrow": "Experience",
       "title": "Where I've built",
       "present": "Present",
-      "viewAll": "View full timeline"
+      "viewAll": "View full timeline",
+      "description": "The most recent roles, and the systems each one put into production."
     },
     "skills": {
       "eyebrow": "Skills",
-      "title": "Technical expertise"
+      "title": "Technical expertise",
+      "description": "The stack I build with day to day, grouped by where it does its work."
     },
     "cta": {
       "eyebrow": "Let's talk",
       "title": "Engineering a Smarter Tomorrow",
       "description": "Ready to build something that holds up under real traffic? Let's connect.",
-      "contact": "Get in touch"
+      "contact": "Get in touch",
+      "viewWork": "View work",
+      "rail": [
+        "Ideas",
+        "Systems",
+        "People",
+        "Impact"
+      ]
+    },
+    "eyebrow": "Build · Solve · Scale",
+    "letsTalk": "Let's talk",
+    "rail": [
+      "Ideas",
+      "Code",
+      "Systems",
+      "Impact"
+    ],
+    "techStrip": {
+      "label": "Technologies I work with"
     }
   },
   "notFound": {

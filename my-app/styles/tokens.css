@@ -1,11 +1,16 @@
 /*
- * METRIAL design tokens (SRS-FE §4.1, brand sheet).
+ * METRIAL design tokens (SRS-FE §4.1, brand sheet + 2026-09-20 visual pass).
  *
- * Contrast pairs verified 2026-09-16 (WCAG 2.1 relative luminance):
- *   offwhite (#F4F5F7) on charcoal  -> 17.0 : 1  (passes AAA body)
- *   silver   (#8B919B) on charcoal  -> 5.9  : 1  (passes AA body)
- *   gold     (#C6A86A) on charcoal  -> 8.2  : 1  (passes AA body)
- *   charcoal on gold (button face)  -> calculated from the same pair, AA.
+ * Brand core (brand sheet): gold #C6A86A, charcoal #111318, silver #8B919B,
+ * off-white #F4F5F7. Charcoal stays the brand black and the ink colour used
+ * *on* gold surfaces; the page itself sits on the deeper `ink` black the
+ * comps use, which only raises contrast.
+ *
+ * Contrast pairs re-verified 2026-09-20 against --color-ink (#070A0C):
+ *   offwhite (#F4F5F7) on ink     -> 17.9 : 1  (AAA body)
+ *   silver   (#8B919B) on ink     -> 6.2  : 1  (AA body)
+ *   gold     (#C6A86A) on ink     -> 8.7  : 1  (AA body)
+ *   charcoal (#111318) on gold    -> 8.2  : 1  (AA, button face)
  * Rule carried forward: silver may be used for body-size text; gold is
  * reserved for accents, focus rings, and large/bold display text.
  */
@@ -13,14 +18,21 @@
   --color-gold: #c6a86a;
   --color-gold-light: #e2c88f;
   --color-gold-dark: #9e8150;
+
+  /* Page + surfaces, darkest to lightest. */
+  --color-ink: #070a0c;
+  --color-ink-2: #0a0d11;
   --color-charcoal: #111318;
-  --color-surface: #181b22;
-  --color-line: #2a2e37;
+  --color-surface: #0e1216;
+  --color-surface-2: #141920;
+  --color-line: #20262e;
+  --color-line-soft: #161b21;
+
   --color-silver: #8b919b;
   --color-offwhite: #f4f5f7;
 
-  /* Semantic status (toast/status panel); contrast vs charcoal:
-   * success 5.4:1, danger 6.1:1, warning 5.2:1 -- all AA for body text.
+  /* Semantic status (toast/status panel); contrast vs ink:
+   * success 6.0:1, danger 6.4:1, warning 5.5:1 -- all AA for body text.
    * Used only as backgrounds/borders with dark text for strong contrast. */
   --color-success: #65d9a5;
   --color-danger: #ff8f8f;
@@ -34,6 +46,11 @@
 
   --radius-card: 1rem;
 
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.03) inset,
+    0 18px 40px -28px rgb(0 0 0 / 0.9);
+  --shadow-lift: 0 1px 0 0 rgb(255 255 255 / 0.05) inset,
+    0 28px 60px -30px rgb(0 0 0 / 1);
+
   /* next/font exposes these variables on <html> (app/[lang]/layout.tsx). */
   --font-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -44,4 +61,6 @@
 :root {
   /* M-mark diagonal (0.625), used by SlopeDivider in FE-1. */
   --slope: 0.625;
+  /* Sticky header height; sections offset their scroll anchors by it. */
+  --header-h: 4.5rem;
 }
