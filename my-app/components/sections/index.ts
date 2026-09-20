@@ -1,6 +1,7 @@
 export { Hero } from "./hero";
 export { LiveStrip } from "./live-strip";
 export { ProofStats } from "./proof-stats";
+export { AboutSplit } from "./about-split";
 export { TechStrip } from "./tech-strip";
 export { FeaturedProjects } from "./featured-projects";
 export { ExperienceSnapshot } from "./experience-snapshot";

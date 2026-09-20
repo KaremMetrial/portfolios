@@ -17,6 +17,7 @@ import type { TechItem } from "@/components/sections/tech-strip";
 import {
   Hero,
   ProofStats,
+  AboutSplit,
   TechStrip,
   FeaturedProjects,
   ExperienceSnapshot,
@@ -28,7 +29,7 @@ import {
  * The stack that actually appears in the work: technologies with a brand mark
  * first (they carry the strip visually), then the rest by project count.
  */
-function topTechnologies(groups: SkillGroup[], limit = 9): TechItem[] {
+function topTechnologies(groups: SkillGroup[], limit = 8): TechItem[] {
   return groups
     .flatMap((group) => group.skills)
     .map((skill) => ({
@@ -104,6 +105,17 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
       <TechStrip
         items={topTechnologies(skills)}
         label={homeDict.techStrip.label}
+      />
+
+      <AboutSplit
+        about={profile.about}
+        dict={{
+          eyebrow: homeDict.about.eyebrow,
+          title: homeDict.about.title,
+          cta: homeDict.about.cta,
+          quote: homeDict.about.quote,
+        }}
+        lang={lang as Locale}
       />
 
       <FeaturedProjects
