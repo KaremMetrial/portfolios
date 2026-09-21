@@ -45,7 +45,12 @@ export default async function LangLayout({
   const profile = await getProfile(lang);
 
   return (
-    <html lang={lang} dir={dir(lang)} className={fontVariables}>
+    <html
+      lang={lang}
+      dir={dir(lang)}
+      className={fontVariables}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <SkipLink label={dict.header.skipToContent} />
         <LanguageBanner

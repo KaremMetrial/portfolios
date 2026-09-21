@@ -22,7 +22,12 @@ export default function GlobalNotFound() {
   const ar = getDictionary("ar");
 
   return (
-    <html lang="en" dir="ltr" className={fontVariables}>
+    <html
+      lang="en"
+      dir="ltr"
+      className={fontVariables}
+      data-scroll-behavior="smooth"
+    >
       <body>
         <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-12 px-4 py-24 sm:px-6">
           <Link href="/" aria-label={en.nav.home} className="w-fit">
