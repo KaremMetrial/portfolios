@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { MetrialLogotype } from "@/components/brand/metrial-logotype";
 import { MetrialMark } from "@/components/brand/metrial-mark";
 import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/motion/reveal";
@@ -146,9 +147,10 @@ export function Hero({ profile, dict, lang }: HeroProps) {
                 className="h-20 w-auto drop-shadow-[0_18px_40px_rgba(0,0,0,0.85)] sm:h-24"
                 title="Metrial"
               />
-              <span className="font-display text-xs font-semibold tracking-[0.42em] text-gold-light uppercase drop-shadow-[0_6px_18px_rgba(0,0,0,0.9)] sm:text-sm">
-                Metrial
-              </span>
+              <MetrialLogotype
+                tracking={0.36}
+                className="text-base drop-shadow-[0_6px_18px_rgba(0,0,0,0.9)] sm:text-lg"
+              />
               <SlopeDivider className="w-10" />
             </div>
 

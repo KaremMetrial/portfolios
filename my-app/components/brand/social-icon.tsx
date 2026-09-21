@@ -1,5 +1,19 @@
 import { Globe, Mail } from "lucide-react";
 
+const socialNames: Record<string, string> = {
+  github: "GitHub",
+  linkedin: "LinkedIn",
+  email: "Email",
+  x: "X",
+  twitter: "X",
+  youtube: "YouTube",
+};
+
+/** Display name for a social platform key ("github" → "GitHub"). */
+export function socialLabel(platform: string): string {
+  return socialNames[platform.toLowerCase()] ?? platform;
+}
+
 type SocialIconProps = {
   platform: string;
   className?: string;

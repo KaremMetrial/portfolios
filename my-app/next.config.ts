@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    // 90 is used for the photographic brand plates (About band).
+    qualities: [75, 90],
     remotePatterns: [
       {
         protocol: apiUrl.protocol === "http:" ? "http" : "https",

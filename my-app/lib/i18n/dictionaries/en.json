@@ -128,5 +128,100 @@
     "body": "The page you are looking for does not exist or has moved.",
     "home": "Back to home",
     "projects": "Browse projects"
+  },
+  "pages": {
+    "projects": {
+      "metaTitle": "Projects",
+      "eyebrow": "Selected work",
+      "title": "Real projects. Real impact.",
+      "description": "Platforms I've built and shipped — delivery, marketplaces, payments, e-commerce, and the open-source tooling behind them.",
+      "all": "All",
+      "filterLabel": "Filter projects by domain",
+      "empty": "No projects in this category yet."
+    },
+    "project": {
+      "back": "All projects",
+      "overview": "Overview",
+      "role": "Role",
+      "period": "Period",
+      "type": "Type",
+      "domain": "Domain",
+      "stack": "Stack",
+      "links": "Links",
+      "confidential": "This project is under NDA, so only a summary is shown here. Happy to walk through the architecture in a call.",
+      "present": "Present",
+      "types": {
+        "company": "Company",
+        "freelance": "Freelance",
+        "personal": "Personal",
+        "open_source": "Open source"
+      },
+      "ctaTitle": "Need something like this built?",
+      "ctaBody": "Tell me what you're working on and I'll get back to you within a day.",
+      "ctaAction": "Let's talk",
+      "more": "More projects"
+    },
+    "experience": {
+      "metaTitle": "Experience",
+      "eyebrow": "Career",
+      "title": "Where I've built",
+      "description": "Every role, and the systems each one put into production.",
+      "education": "Education",
+      "certificates": "Certificates",
+      "viewCredential": "View credential"
+    },
+    "about": {
+      "metaTitle": "About",
+      "eyebrow": "About",
+      "title": "More than code. A partner in progress.",
+      "valuesTitle": "How I work",
+      "values": [
+        {
+          "title": "Secure by default",
+          "body": "Authentication, authorization and input validation designed in from the first endpoint, not bolted on."
+        },
+        {
+          "title": "Built to be tested",
+          "body": "Feature and unit tests with PHPUnit and Pest, so changes ship with confidence."
+        },
+        {
+          "title": "Fast under load",
+          "body": "Query tuning, indexing, caching and queues for systems that hold up under real traffic."
+        },
+        {
+          "title": "Clear ownership",
+          "body": "Readable code, documented decisions, and a codebase the next engineer can pick up."
+        }
+      ]
+    },
+    "contact": {
+      "metaTitle": "Contact",
+      "eyebrow": "Get in touch",
+      "title": "Let's build something great together.",
+      "description": "Have a project in mind, need technical advice, or just want to say hello? Send a message and I'll reply personally.",
+      "email": "Email",
+      "location": "Location",
+      "response": "Response time",
+      "responseValue": "Usually within 24 hours",
+      "social": "Elsewhere",
+      "form": {
+        "name": "Your name",
+        "email": "Your email",
+        "type": "Project type",
+        "typePlaceholder": "Select an option",
+        "types": [
+          "Backend / API development",
+          "Performance & optimization",
+          "Consulting",
+          "Full-time role",
+          "Something else"
+        ],
+        "message": "Message",
+        "messagePlaceholder": "Tell me about your project…",
+        "send": "Send message",
+        "note": "Opens your email app with the message ready to send.",
+        "required": "Please fill in your name, email and message."
+      }
+    }
   }
 }

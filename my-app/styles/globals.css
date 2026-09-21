@@ -144,6 +144,19 @@
     color: transparent;
   }
 
+  /* Vertical gold ramp for the METRIAL logotype (matches its SVG chevron). */
+  .text-gold-sheen {
+    background: linear-gradient(
+      180deg,
+      var(--color-gold-light) 0%,
+      var(--color-gold) 55%,
+      var(--color-gold-dark) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
   /* Vertical letterspaced keyword rail (comps: IDEAS / CODE / SYSTEMS). */
   .rail {
     writing-mode: vertical-rl;

@@ -3,7 +3,7 @@ import { cacheLife } from "next/cache";
 import { MapPin, Mail } from "lucide-react";
 
 import { MetrialWordmark } from "@/components/brand/metrial-wordmark";
-import { SocialIcon } from "@/components/brand/social-icon";
+import { SocialIcon, socialLabel } from "@/components/brand/social-icon";
 import { LiveStrip } from "@/components/sections/live-strip";
 import { env } from "@/lib/env";
 import { localizedPath, type Locale } from "@/lib/i18n/config";
@@ -76,7 +76,7 @@ export function Footer({
                       ? "noreferrer noopener"
                       : undefined
                   }
-                  aria-label={link.platform}
+                  aria-label={socialLabel(link.platform)}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line text-silver transition-colors hover:border-gold/50 hover:text-gold"
                 >
                   <SocialIcon platform={link.platform} className="h-4 w-4" />

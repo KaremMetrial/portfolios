@@ -56,7 +56,8 @@ export function AboutSplit({ about, dict, lang }: AboutSplitProps) {
 
         <Reveal delay={0.1} className="relative min-h-[18rem] lg:min-h-[32rem]">
           <Image
-            src="/brand/studio.webp"
+            src="/brand/studio-hq.webp"
+            quality={90}
             alt=""
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"

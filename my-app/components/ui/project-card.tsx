@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MetrialMark } from "@/components/brand/metrial-mark";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/cn";
+import { formatDomain } from "@/lib/format";
 import type { ProjectCard as ProjectCardData } from "@/lib/api";
 
 type ProjectCardProps = {
@@ -88,7 +89,7 @@ export function ProjectCard({
 
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-4">
             <span className="rounded-full border border-line bg-ink/80 px-3 py-1 font-display text-[0.6rem] font-semibold tracking-[0.18em] text-silver uppercase backdrop-blur-sm">
-              {project.domain}
+              {formatDomain(project.domain)}
             </span>
             {project.is_featured && (
               <span className="rounded-full bg-gold px-3 py-1 font-display text-[0.6rem] font-semibold tracking-[0.18em] text-charcoal uppercase">
